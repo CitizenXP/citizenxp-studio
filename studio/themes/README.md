@@ -44,7 +44,7 @@ Set the product name separately, with `brandName` in `config.js`.
 | Theme | Looks like |
 |---|---|
 | *(none)* | Neutral slate and blue. The brandless default built into `studio.css`. |
-| `atdawn` | Sunrise orange on black. The original At Dawn Studio identity. |
+| `atdawn` | Sunrise orange on black, the At Dawn show identity. |
 | `aebly` | Brass on warm near-black, Sora and EB Garamond. Matches aeblymedia.com. |
 
 ### A note on taking colours from a website

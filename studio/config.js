@@ -35,7 +35,7 @@ window.STUDIO_CONFIG = {
 	vdoPath: "../",
 
 	// SHA-256 of the admin password (set via admin.html -> Settings -> "Change admin password")
-	adminPasswordHash: "2756913f66f6be6dc8152d971f1c9e7e7a99b9f77407c7f584b13c151993996d",
+	adminPasswordHash: "f2790c00722d7c0ffa891afbc46bbf2d02d5766e56fcc4103068b5acadb7fcb5",
 
 	// Defaults used the first time the dashboard runs (editable in Settings).
 	// Leave the room fields empty: the dashboard then generates unguessable random

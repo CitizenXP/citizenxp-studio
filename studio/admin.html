@@ -1071,7 +1071,7 @@
 		Studio.toast(EV.apiKey ? "Remote control on: rooms reconnected with API keys" : "Remote control off");
 	}
 	$("setApiKey").addEventListener("change", () => applyApiKey($("setApiKey").value));
-	$("genApiBtn").addEventListener("click", () => applyApiKey("atdawn_" + Studio.randId(8)));
+	$("genApiBtn").addEventListener("click", () => applyApiKey("studio_" + Studio.randId(8)));
 
 	/* ================= TALKBACK (producer voice, never reaches the stream) ================= */
 	// per-room talk state: "off" | "room" | "<uuid>" (whispering to one guest)

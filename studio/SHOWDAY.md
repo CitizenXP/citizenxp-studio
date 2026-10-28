@@ -2,7 +2,7 @@
 
 One page. Keep it open on a second screen.
 
-Control room: `https://citizenxp.github.io/atdawn-studio/studio/admin.html`
+Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
 
 ---
 

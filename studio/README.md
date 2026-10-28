@@ -349,7 +349,7 @@ in `studio/themes/README.md`.
 
 ### Pushing updates to GitHub (the normal workflow)
 
-This repo is already connected to **`github.com/CitizenXP/atdawn-studio`** (branch `main`),
+This repo is already connected to **`github.com/CitizenXP/citizenxp-studio`** (branch `main`),
 which GitHub Pages serves. The git repo lives in the **web-root** folder
 (`vdo.ninja-30.2/vdo.ninja-30.2/`), *not* the top-level project folder, so edit the
 files in this `/studio/` folder as usual, then from the top-level project folder run:
@@ -359,7 +359,7 @@ files in this `/studio/` folder as usual, then from the top-level project folder
 ```
 
 That one script commits any changes, pushes to `main`, and keeps Pages enabled. The site
-goes live 1–3 minutes later at `https://citizenxp.github.io/atdawn-studio/studio/`.
+goes live 1–3 minutes later at `https://citizenxp.github.io/citizenxp-studio/studio/`.
 It only needs a one-time `gh auth login` if the GitHub CLI ever reports you're signed out.
 
 ### Hosting options

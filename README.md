@@ -1,15 +1,15 @@
-# At Dawn Studio
+# CitizenXP Studio
 
 **A producer-friendly control room and Zoom-simple guest experience for live broadcasts,
 built on top of a self-hosted [VDO.Ninja](https://vdo.ninja).**
 
-At Dawn Studio wraps VDO.Ninja's peer-to-peer video engine in a purpose-built workflow for
+CitizenXP Studio wraps VDO.Ninja's peer-to-peer video engine in a purpose-built workflow for
 running live shows: guests join through one clean link, wait in a branded waiting room, get
 admitted to a green room, and are moved on air with a click, while the producer runs
 everything from a single dashboard.
 
-> **Live app:** https://citizenxp.github.io/atdawn-studio/studio/
-> **Control room:** https://citizenxp.github.io/atdawn-studio/studio/admin.html
+> **Live app:** https://citizenxp.github.io/citizenxp-studio/studio/
+> **Control room:** https://citizenxp.github.io/citizenxp-studio/studio/admin.html
 
 ---
 
@@ -29,7 +29,7 @@ everything from a single dashboard.
 
 ## Where the code lives
 
-Everything At Dawn Studio adds is in the [`studio/`](studio/) folder:
+Everything CitizenXP Studio adds is in the [`studio/`](studio/) folder:
 
 | File | Purpose |
 |---|---|
@@ -55,7 +55,7 @@ folder. It commits, pushes, and keeps Pages enabled. See
 
 ## Built on VDO.Ninja: credit & license
 
-At Dawn Studio is a wrapper around **[VDO.Ninja](https://vdo.ninja)**, created by
+CitizenXP Studio is a wrapper around **[VDO.Ninja](https://vdo.ninja)**, created by
 **[Steve Seguin](https://github.com/steveseguin)**. All of the real-time peer-to-peer video
 technology, the hard part, is his work. This project only adds a show-production workflow
 on top of it.
@@ -65,7 +65,7 @@ on top of it.
 - Support Steve's work: **https://github.com/sponsors/steveseguin**
 
 VDO.Ninja is licensed under the **[AGPL-3.0](LICENCE.md)** (see also [`AGPLv3.md`](AGPLv3.md)).
-Because At Dawn Studio builds on AGPL-licensed code, the At Dawn Studio wrapper is likewise
+Because CitizenXP Studio builds on AGPL-licensed code, the CitizenXP Studio wrapper is likewise
 released under **AGPL-3.0**, and this repository is kept public to satisfy the license's
 requirement that modifications remain accessible. If you fork this, please keep this notice,
 keep your repository public, and consider sponsoring Steve.
