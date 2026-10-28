@@ -745,6 +745,16 @@
 		try {
 			if (!w || typeof w.recordLocalVideoToggle !== "function") return "not ready";
 			if (typeof w.MediaRecorder === "undefined") return "this browser can't record";
+			// VDO always asks MediaRecorder for a webm (or matroska) container, and its
+			// fallback sets "video/webm" without testing it. A browser that records only
+			// MP4 (Safari, so every iPhone) therefore throws inside an async function,
+			// where the try/catch below cannot see it, and the board would be told the
+			// take is rolling when nothing is being written. Refuse up front instead.
+			if (!w.MediaRecorder.isTypeSupported("video/webm;codecs=h264") &&
+				!w.MediaRecorder.isTypeSupported("video/webm;codecs=vp8") &&
+				!w.MediaRecorder.isTypeSupported("video/webm")) {
+				return "this browser can't record the studio format: join from a laptop in Chrome";
+			}
 			if (!w.session.videoElement) return "no camera yet";
 			const st = w.session.videoElement.srcObject;
 			if (!st || !st.getTracks || !st.getTracks().length) return "no camera yet";
@@ -782,7 +792,15 @@
 						w.session.recordingVideoCodec = "h264";
 					}
 				} catch (e) {}
-				w.recordLocalVideoToggle(true); // startonly: never toggles OFF a running take
+				// recordLocalVideoToggle is async, so anything it throws arrives as a
+				// rejected promise long after the try/catch below has gone. Catch it here
+				// or a failed start would keep reporting "on" to the control room.
+				Promise.resolve(w.recordLocalVideoToggle(true)) // startonly: never toggles OFF a running take
+					.catch(e => {
+						recOn = false;
+						renderRecPill();
+						recReport("fail", (e && e.message) ? String(e.message).slice(0, 60) : "recorder error");
+					});
 				recOn = true; recStartedAt = Date.now();
 				showRecSaved("Recording started on this computer. If your browser asks " +
 					"where to save the file, pick anywhere you will remember: you will send " +

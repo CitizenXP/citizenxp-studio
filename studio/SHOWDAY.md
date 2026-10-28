@@ -24,7 +24,9 @@ Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
 
 Send each guest their invite plus these four lines:
 
-> - Use **Chrome or Edge on a computer**. Not a phone, not Safari.
+> - Use **Chrome or Edge on a computer**. Not a phone, not Safari. A phone can join
+>   and go live, but it cannot record your master copy, and a laptop screen is the
+>   only way to see the rest of the panel properly.
 > - Wear **headphones**.
 > - Keep **10 GB free**. Your computer records the master copy.
 > - In Chrome, turn **off** Settings → Downloads → *Ask where to save each file before
