@@ -1893,9 +1893,15 @@
 		updateRecButton();
 	}
 
+	// What the big button means, for the label and the click alike. These were once two
+	// separate tests, and whenever the session was armed but nobody was reporting "on"
+	// yet, which is what happens the moment a guest reloads, the button read "Stop" and
+	// sent start, re-arming itself on every press.
+	function recSessionOn() { return recArmed === true || anyRecording(); }
+
 	function updateRecButton() {
 		const btn = $("recAllBtn");
-		const armedNow = recArmed === true || anyRecording();
+		const armedNow = recSessionOn();
 		btn.classList.toggle("armed", armedNow);
 		btn.classList.toggle("primary", !armedNow);
 		btn.innerHTML = armedNow
@@ -1931,7 +1937,7 @@
 		Studio.toast(ok ? "OBS clip link copied. Add it as a browser source now; it stays black until you roll a clip." : "Copy failed", !ok);
 	});
 
-	$("recAllBtn").addEventListener("click", () => setLocalRecAll(!anyRecording()));
+	$("recAllBtn").addEventListener("click", () => setLocalRecAll(!recSessionOn()));
 	$("recRefresh").addEventListener("click", () => { recPingAll(); Studio.toast("Asked every guest to re-report"); });
 	$("recSendUpload").addEventListener("click", () => {
 		const up = (EV.uploadUrl || "").trim().replace(/\s+/g, "");
