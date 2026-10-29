@@ -796,6 +796,10 @@
 	   The finished file lands in the GUEST's downloads folder. They have to send it
 	   to the producer afterwards; we say so plainly on screen when it stops. */
 	let recOn = false, recStartedAt = 0, uploadUrl = null;
+	// The last instruction from the control room, as opposed to what the recorder is
+	// doing. null until they say either way, so a guest driving VDO's own record button
+	// is left alone. Once it is false, the poll below keeps it false: see why there.
+	let recWanted = null;
 
 	function recWindow() {
 		try {
@@ -825,36 +829,51 @@
 		} catch (e) { return "not ready"; }
 	}
 
-	function recIsRunning(w) {
+	/* What VDO itself thinks is happening, which is not the same as what its button
+	   shows. Three states, because the third one is the whole bug:
+
+	   "restarting" is VDO recovering from a MediaRecorder error on its own. It tears
+	   the take down and opens a NEW file about half a second later, on a timer that
+	   nothing can cancel, and during that gap its button reads "2" while the recording
+	   flag has already been deleted. Reading that gap as "off" is what let the control
+	   room stack a second take on top of the one VDO was already rebuilding.
+
+	   The "closing" flag beats both of the others: VDO deletes videoElement.recording
+	   500ms AFTER a stop begins, so for half a second a stopped take still looks live. */
+	function recState(w) {
 		try {
+			const v = w.session.videoElement;
 			const el = w.document.getElementById("recordLocalbutton");
-			if (el && el.dataset.state === "1") return true;
-			return !!(w.session.videoElement && "recording" in w.session.videoElement);
-		} catch (e) { return false; }
+			const st = el ? el.dataset.state : "0";
+			if (v && v.recorder && v.recorder.closing) return st === "2" ? "restarting" : "off";
+			if (v && ("recording" in v || v.recorder)) return "on";
+			if (st === "2") return "restarting";
+			return st === "1" ? "on" : "off";
+		} catch (e) { return "off"; }
 	}
+	function recIsRunning(w) { return recState(w) === "on"; }
 
 	function setLocalRec(on, kbps) {
 		const w = recWindow();
 		const why = recSupported(w);
 		if (why) { recReport("fail", why); return; }
-		const running = recIsRunning(w);
+		recWanted = !!on; // the producer's instruction, remembered and then enforced below
+		const state = recState(w);
 		try {
-			if (on && !running) {
+			if (on && state === "off") {
 				// set the bitrate directly rather than via &record=, which pops a
 				// blocking browser alert on Safari/iOS before the guest even joins
 				if (kbps !== undefined && kbps !== null && !isNaN(kbps)) w.session.recordLocal = kbps;
 
-				// Record H.264 when the browser can. The container is still .webm (VDO picks
-				// the extension and we do not patch VDO), but the video inside is H.264, so
-				// turning the take into an editable .mp4 afterwards is a stream copy that
-				// finishes in seconds instead of a full re-encode of a two-hour show.
-				// If the browser says no, VDO falls back to its normal VP8/VP9 webm.
-				try {
-					if (typeof w.MediaRecorder !== "undefined" &&
-						w.MediaRecorder.isTypeSupported("video/webm;codecs=h264")) {
-						w.session.recordingVideoCodec = "h264";
-					}
-				} catch (e) {}
+				// The codec is deliberately left alone. We used to ask for H.264 here,
+				// because it turns the post-show conversion to .mp4 into a stream copy
+				// instead of a re-encode. The problem is that isTypeSupported says yes on
+				// machines whose hardware encoder then throws part-way through the take.
+				// VDO answers that by tearing the recording down and starting a new file
+				// every few seconds, which is how a guest ends up with dozens of fragments
+				// rather than a recording. VDO defaults to VP8 for exactly this reason, so
+				// let it: transcoding afterwards costs time, this cost us the footage.
+
 				// recordLocalVideoToggle is async, so anything it throws arrives as a
 				// rejected promise long after the try/catch below has gone. Catch it here
 				// or a failed start would keep reporting "on" to the control room.
@@ -864,13 +883,24 @@
 						renderRecPill();
 						recReport("fail", (e && e.message) ? String(e.message).slice(0, 60) : "recorder error");
 					});
-				recOn = true; recStartedAt = Date.now();
+				recStartedAt = Date.now();
 				showRecSaved("Recording started on this computer. If your browser asks " +
 					"where to save the file, pick anywhere you will remember: you will send " +
 					"it to the producer afterwards.", 12000);
-				recReport("on");
-			} else if (!on && running) {
-				w.recordLocalVideoToggle();
+				// Do not claim it is rolling until it is. VDO silently ignores a start while
+				// its button sits mid-restart, and a board showing a red dot over a guest who
+				// is recording nothing is worse than a board showing nothing at all.
+				setTimeout(() => {
+					recOn = recState(w) !== "off";
+					renderRecPill();
+					if (recOn) recReport("on");
+					else recReport("fail", "recorder did not start");
+				}, 1500);
+			} else if (!on) {
+				// Stop whatever is open, whatever state we believe it to be in. This was
+				// once conditional on our own reading of that state, so a single misread
+				// meant the producer's stop quietly did nothing and the guest kept rolling.
+				if (state !== "off") w.recordLocalVideoToggle();
 				recOn = false;
 				const mins = Math.max(1, Math.round((Date.now() - recStartedAt) / 60000));
 				showRecSaved("Recording saved to this computer (about " + mins + " min). " +
@@ -878,8 +908,8 @@
 				showUploadPrompt();
 				recReport("off");
 			} else {
-				recOn = running;
-				recReport(running ? "on" : "off");
+				recOn = state !== "off";
+				recReport(recOn ? "on" : "off");
 			}
 		} catch (e) {
 			recOn = false;
@@ -968,7 +998,12 @@
 		else if (cmd === "STOP") setLocalRec(false);
 		else { // PING: the board is asking whether we are actually rolling
 			const w = recWindow();
-			const running = w ? recIsRunning(w) : false;
+			const state = w ? recState(w) : "off";
+			// Answer "on" while VDO is rebuilding a take it lost. It is about to be
+			// rolling again on its own, and calling that gap "off" is an invitation for
+			// the control room to start a second recording on top of the first.
+			if (state === "restarting") { recReport("on"); return; }
+			const running = state === "on";
 			recOn = running;
 			renderRecPill();
 			const why = w ? recSupported(w) : "not ready";
@@ -991,14 +1026,30 @@
 	setInterval(() => {
 		const w = recWindow();
 		if (!w) return;
-		const running = recIsRunning(w);
+		const state = recState(w);
+
+		// A take that VDO lost brings itself back about half a second later, from a
+		// timer inside its own recorder that nothing outside can reach. When the
+		// producer has already said stop, that timer IS the recording starting again
+		// a few seconds after they pressed the button. The guest is the only place
+		// that can see it happen, so the guest is where it has to be shut down.
+		if (recWanted === false && state !== "off") {
+			try { w.recordLocalVideoToggle(); } catch (e) {}
+			recOn = false;
+			renderRecPill();
+			recReport("off");
+			return;
+		}
+
+		if (state === "restarting") return; // mid-recovery, nothing true to report yet
+		const running = state === "on";
 		if (running !== recOn) {
 			recOn = running;
 			renderRecPill();
 			recReport(running ? "on" : "off");
 			if (!running) showRecSaved("Recording stopped. Check your Downloads folder for the file.");
 		}
-	}, 4000);
+	}, 2000);
 
 	/* ---------- chat drawer ----------
 	   We drive VDO's own chat engine (same-origin sendChatMessage, so the producer's

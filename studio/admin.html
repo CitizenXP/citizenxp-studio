@@ -1986,6 +1986,18 @@
 				recSend(g.sid, "START " + recQ());
 			});
 		}
+		// Stop is retried the same way start is, and for the same reason. "Stop
+		// everyone" only reaches the guests who happen to be in the roster at the
+		// instant it is pressed, so a guest who was reconnecting, or in mid-transfer
+		// between the green room and the broadcast room, never got the message and
+		// would keep recording for the rest of the show with nobody any the wiser.
+		if (recArmed === false) {
+			gs.forEach(g => {
+				if (LOCALREC[g.sid] !== "on") return;
+				recHold[g.sid] = true;
+				recSend(g.sid, "STOP");
+			});
+		}
 		if (changed) renderRecList();
 	}, 15000);
 
@@ -2211,13 +2223,23 @@
 	}
 
 	const autoRecDone = new Set();
+	const autoRecNext = {}; // sid -> earliest time we may attempt this guest again
 	function maybeAutoRecord(main) {
 		const cur = new Set(main.map(g => g.sid));
 		[...autoRecDone].forEach(sid => { if (!cur.has(sid)) autoRecDone.delete(sid); });
 		if (!EV.autoRec) return;
+		const now = Date.now();
 		main.forEach(g => {
 			if (g.recording) { autoRecDone.add(g.sid); return; }
-			if (!autoRecDone.has(g.sid)) toggleRecord($("dirMain"), g.sid); // retried next poll until the stream is ready
+			if (autoRecDone.has(g.sid)) return;
+			// recordVideo is a TOGGLE, and g.recording reads false for the first poll or
+			// two while a stream is still coming up. Firing on every poll therefore
+			// switched the recording on and then straight back off, over and over. One
+			// attempt per guest per 10s instead, which is long enough for the previous
+			// attempt to show up as g.recording before we consider another.
+			if (autoRecNext[g.sid] && now < autoRecNext[g.sid]) return;
+			autoRecNext[g.sid] = now + 10000;
+			toggleRecord($("dirMain"), g.sid);
 		});
 	}
 
