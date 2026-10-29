@@ -58,17 +58,29 @@ Send each guest their invite plus these four lines:
 
 1. [ ] **Overview: Play a video to the room**, press **Add video** and pick the file.
        It joins the broadcast as its own source: the guests see and hear it in the call,
-       and OBS takes it from the clip link you already have in your scene.
+       and OBS takes it from the clip link already in your scene.
 2. [ ] The guests shrink to small boxes with the video large. Uncheck the box in the
        panel if you would rather leave their layout alone.
-3. [ ] **Play another** swaps in the next file. **End clip** takes everyone back to the
-       usual layout.
+3. [ ] **Play another** swaps in the next file. **End clip** returns everyone to normal.
 4. [ ] **Leave the dashboard tab on screen while a clip plays.** A browser stops
        decoding video in a tab that is buried, and that is what makes a clip stutter.
-       The small picture in the panel is your confidence monitor: if it is moving, the
-       room is seeing it.
+       The small picture in the panel is your confidence monitor.
 
-Nothing to prepare and nothing to upload. Any file your browser can play will do.
+### Upload cost, before it surprises you
+
+One copy of the clip goes to each guest, so the cost to your upload grows with the
+panel. The line next to the quality box states it: left to decide for itself the
+studio settled at about **1.5 Mbps per guest**, so roughly **6 Mbps with four guests
+on air**.
+
+- [ ] Check your actual upload speed before the show. If it is under about 15 Mbps,
+      set the quality box to **600 kbps each** (about 2.4 Mbps for four guests) and
+      watch a clip through once in a dry run.
+- [ ] The ceiling applies only to the guests' copies. **OBS always receives the clip
+      at full quality**, so the audience never pays for it. Verified at 2 Mbps / 540p
+      to OBS while the guests were held at 350 kbps each.
+- [ ] If a clip does struggle, the guests' view of each other is not at risk: their
+      cameras travel directly between them and never cross your connection.
 
 ## Wrapping
 

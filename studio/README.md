@@ -207,6 +207,29 @@ swaps the file, **End clip** restores the normal layout.
 
 There is nothing to prepare, nothing to upload and no size limit.
 
+### What a clip costs your upload
+
+One copy goes to each guest. Measured with the clip large on their screens, which is
+what the focus mode does, each copy settled at about **1.5 Mbps**, so about **6 Mbps
+with four guests**. The panel states the figure for the number of people currently on
+air rather than leaving it to be discovered mid-show.
+
+The **quality box** sets a ceiling per copy, applied where a ceiling is actually
+honoured: on each outgoing sender. Verified binding to within 2 kbps of the number
+chosen. Two deliberate exceptions:
+
+- **OBS is never capped.** A solo link is the audience's feed, so throttling it would
+  defeat the purpose. With the guests held at 350 kbps each, the OBS copy still ran at
+  2 Mbps and 540p.
+- **The clip source does not watch anyone.** It joins with `&novideo&noaudio`, because
+  otherwise every guest opens an extra outbound copy of their own camera to it, which
+  measured at roughly 500 kbps of wasted upload each, paid by the people on the weakest
+  connections.
+
+Worth knowing: guest cameras travel directly between the guests and never cross the
+producer's connection. If a clip ever does saturate your uplink, the clip is what
+suffers, not the guests' view of each other.
+
 ### Why it used to stutter, and why it does not now
 
 It was never bandwidth. VDO publishes a file by playing it in a `<video>` element and

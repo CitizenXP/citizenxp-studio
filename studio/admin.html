@@ -477,7 +477,14 @@
 						<input type="file" id="clipFile" accept="video/*,audio/*" style="display:none">
 						<button class="btn sm hidden" id="clipNext"><i class="las la-forward"></i> Play another</button>
 						<button class="btn sm hidden" id="clipEnd"><i class="las la-times"></i> End clip</button>
+						<select id="clipQuality" title="Ceiling on what each guest's copy of the clip may use">
+							<option value="0" selected>Quality: automatic</option>
+							<option value="900">Cap at 900 kbps each</option>
+							<option value="600">Cap at 600 kbps each</option>
+							<option value="350">Cap at 350 kbps each</option>
+						</select>
 						<div class="spacer"></div>
+						<span id="clipCost" class="monHint" style="text-transform:none;letter-spacing:0"></span>
 						<button class="btn sm" id="mediaCopyObs"><i class="las la-copy"></i> Copy OBS link for clips</button>
 					</div>
 
@@ -1389,18 +1396,70 @@
 	function clipSid() { return "clip_" + EV.main; }
 	function clipObsUrl() { return soloLink(clipSid(), EV.main); }
 
+	function clipKbps() { return parseInt($("clipQuality").value, 10) || 0; }
+
 	function clipPubUrl() {
-		return Studio.buildUrl(Studio.vdoBase(), {
+		const p = {
 			room: EV.main,
 			password: EV.pwd || false,
 			push: clipSid(),
 			fileshare: null,
 			label: "Clip",
+			// The clip source has no reason to watch anybody. Without this every guest
+			// opens an extra outbound copy of their own camera to it, which measured at
+			// roughly 500 kbps of wasted upload per guest, paid by the people on the
+			// weakest connections.
+			novideo: null,
+			noaudio: null,
 			cleanoutput: null,
 			hideheader: null,
 			autostart: null,
 			tips: 0
-		});
+		};
+		return Studio.buildUrl(Studio.vdoBase(), p);
+	}
+
+	// &bitrate does not constrain what a fileshare publisher sends: measured at 547
+	// kbps per copy whether it was set to 350 or left alone. Cap it where a cap is
+	// actually honoured, on each outgoing sender, and re-apply as guests arrive so a
+	// late joiner cannot open an uncapped copy.
+	let clipCapTimer = null;
+	async function clipApplyCap(w) {
+		const kbps = clipKbps();
+		try {
+			for (const uuid in w.session.pcs) {
+				const pc = w.session.pcs[uuid];
+				if (!pc || !pc.getSenders) continue;
+				// A solo link is OBS, and OBS is what the audience sees. Capping that
+				// copy would throttle the broadcast itself, which is the opposite of
+				// the point: the ceiling exists to protect the guests' experience.
+				if (pc.solo) continue;
+				for (const s of pc.getSenders()) {
+					if (!s.track || s.track.kind !== "video") continue;
+					const prm = s.getParameters();
+					if (!prm.encodings || !prm.encodings.length) prm.encodings = [{}];
+					prm.encodings.forEach(e => {
+						if (kbps) e.maxBitrate = kbps * 1000;
+						else delete e.maxBitrate;
+					});
+					try { await s.setParameters(prm); } catch (e) {}
+				}
+			}
+		} catch (e) {}
+	}
+
+	// One copy of the clip goes to each guest, so the cost to this machine's upload
+	// grows with the panel. Show the number rather than leaving it to be discovered
+	// during a show.
+	function renderClipCost() {
+		const n = Math.max(1, (lastMain || []).length);
+		// Left alone, each copy settled at roughly 1.5 Mbps once the clip was the big
+		// thing on the guests' screens. That is the honest default to quote, not the
+		// much lower figure it uses when the clip is only a small tile.
+		const per = clipKbps() || 1500;
+		const total = (per * n) / 1000;
+		$("clipCost").textContent = n + " on air, about " + total.toFixed(1) + " Mbps of your upload" +
+			(clipKbps() ? "" : " (automatic)");
 	}
 
 	function clipSetState(t) { $("clipState").textContent = t; }
@@ -1507,11 +1566,15 @@
 
 		clipLive = true;
 		clipSetState("Playing to the room and to OBS.");
+		clearInterval(clipCapTimer);
+		clipCapTimer = setInterval(() => clipApplyCap(w), 3000);
+		clipApplyCap(w);
 		if ($("clipSpot").checked) setTimeout(() => clipFocus(true), 2500);
 		Studio.toast("“" + file.name + "” is playing to the room");
 	}
 
 	function clipEnd() {
+		clearInterval(clipCapTimer); clipCapTimer = null;
 		if (clipSpotlit) clipFocus(false);
 		clipLive = false;
 		try { $("clipPub").src = "about:blank"; } catch (e) {}
@@ -1531,6 +1594,10 @@
 		if (f) clipStart(f);
 	});
 	$("clipSpot").addEventListener("change", e => { if (clipLive) clipFocus(e.target.checked); });
+	$("clipQuality").addEventListener("change", () => {
+		renderClipCost();
+		if (clipLive) { try { clipApplyCap($("clipPub").contentWindow); } catch (e) {} }
+	});
 
 
 	function recQ() { return parseInt($('recQuality').value, 10); }
@@ -2077,6 +2144,7 @@
 		let main = readGuests($("dirMain"));
 		[green, main] = dedupeRooms(green, main);
 		lastGreen = green; lastMain = main;
+		renderClipCost();
 		maybeAutoRecord(main);
 		const waiting = green.filter(g => g.queued).length;
 		const badge = $("greenBadge");
