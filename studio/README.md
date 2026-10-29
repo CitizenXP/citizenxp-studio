@@ -198,19 +198,36 @@ will be editing.
 
 ## Playing a video to the room and the stream
 
-**Overview → Play a video to the room → Open media player** opens a tab that joins the
-broadcast room as an extra source. Pick a file there and it plays to every guest on air
-and into OBS from the same source, so guest reactions line up with what the audience
-sees. There is a second button that copies an **OBS link for the clip alone**, for a
-full-screen cut; add it as a browser source before the show and it lights up when a clip
-plays. Closing the tab removes the clip from the guests and from OBS.
+Clips live in `studio/clips/` and are served from the same place as the studio itself.
+Add them before a show with `studio/tools/add-clip.ps1`, which re-encodes a local file
+for the web, or simply registers a YouTube link. See
+[studio/clips/README.md](clips/README.md).
+
+On the day, the **Play a video to the room** panel lists the library. **Preload on
+everyone** pushes the file into each guest's browser cache, **Play** rolls it, and
+Pause, Resume and Stop stay in the control room. **Copy OBS link for clips** gives you
+one browser source to add to your scene permanently: it is black until you roll
+something, then shows the clip full screen.
+
+### Why a clip is never streamed into the call
+
+The obvious design publishes the clip into the room as another WebRTC source. That makes
+the producer's machine encode it and upload one full copy to every guest plus one to
+OBS, on top of the camera it is already sending and the guest streams it is already
+receiving. A home uplink cannot carry that, and WebRTC answers by throttling: the clip
+stutters and every guest's camera degrades at the same moment.
+
+So nothing is streamed. Each participant fetches the clip once from the CDN and plays
+their own copy, while the control room calls out the true position every few seconds to
+keep them in step. Measured in testing: guests and OBS within about 20ms of each other,
+and no additional inbound stream in the room at all.
 
 Two things to know:
 
-- **Keep the media tab visible while a clip plays.** Chrome throttles background tabs and
-  the playback stalls if you bury it behind the control room. Put it on a second screen.
-- The file never leaves your computer: it is streamed into the room like a camera, not
-  uploaded anywhere.
+- **Clips in this folder are public.** Anyone with the URL can download them. For
+  embargoed material use an unlisted YouTube link instead.
+- **100 MB per file**, a GitHub limit. The encoder refuses rather than producing
+  something that cannot be pushed; trim the clip or lower the bitrate.
 
 ## Handing recordings back at the end
 

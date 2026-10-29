@@ -17,8 +17,8 @@ Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
       their recording stops.
 - [ ] **Guest Links** tab: add every guest by name, copy each one their personal invite.
 - [ ] Preload the OBS solo links as browser sources. They sit dark until the guest is live.
-- [ ] **Overview → Play a video to the room**: press **Copy OBS link for the clip** and add
-      that as a browser source now too. That is your full-screen cut for clips.
+- [ ] **Overview: Play a video to the room**: press **Copy OBS link for clips** and
+      add that as a browser source now too. It stays black until you roll a clip.
 - [ ] Install ffmpeg once, so converting the takes afterwards is instant:
       `winget install Gyan.FFmpeg`
 
@@ -56,14 +56,21 @@ Send each guest their invite plus these four lines:
 
 ## Playing a clip
 
-1. [ ] **Overview → Play a video to the room → Open media player.** A new tab opens.
-2. [ ] Pick your video file there. It plays to every guest on air **and** into OBS at the
-       same time, so their reactions match what the audience sees.
-3. [ ] **Keep that tab visible while it plays.** Chrome throttles background tabs and the
-       playback will stall if you bury it. Put it on your second screen.
-4. [ ] Cut to the clip's own OBS source for full screen, or leave the room mix up to show
-       everyone reacting.
-5. [ ] Close the tab when the clip is done. It disappears from the guests and from OBS.
+Clips are not streamed through the call. Every guest and OBS plays its own copy, so a
+clip costs the room no bandwidth and nobody sees a stutter.
+
+1. [ ] Once guests are in the green room, press **Preload on everyone** and wait for
+       the Ready count to reach everybody. This is the step that makes playback instant.
+2. [ ] Press **Play** next to the clip. Guests switch to the clip with each other in a
+       strip along the bottom, and your OBS clip source cuts to the same frame.
+3. [ ] **Pause**, **Resume** and **Stop** stay in the control room. Stop returns everyone
+       to the call.
+4. [ ] Tick **Hear it here** if you want the clip in your own headphones. It is muted by
+       default so it cannot double up with what OBS is already playing.
+
+Add clips the day before with `studio/tools/add-clip.ps1`, then deploy.
+then deploy. YouTube links work too and need no upload. A clip that has not been
+deployed does not exist as far as your guests are concerned.
 
 ## Wrapping
 

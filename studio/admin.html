@@ -473,11 +473,26 @@
 				<h3 class="recHead"><i class="las la-film"></i> Play a video to the room <span class="monHint" style="text-transform:none;letter-spacing:0">guests and the stream see it from one source</span></h3>
 				<div class="recCard">
 					<div class="recTop">
-						<button class="btn primary" id="mediaOpen"><i class="las la-folder-open"></i> Open media player</button>
-						<button class="btn sm" id="mediaCopyObs"><i class="las la-copy"></i> Copy OBS link for the clip</button>
+						<button class="btn sm" id="clipPreloadAll" title="Have every guest download the clips now, so playback starts instantly"><i class="las la-download"></i> Preload on everyone</button>
+						<button class="btn sm" id="mediaCopyObs"><i class="las la-copy"></i> Copy OBS link for clips</button>
 						<div class="spacer"></div>
+						<span id="clipReadyNote" class="monHint" style="text-transform:none;letter-spacing:0"></span>
 					</div>
-					<p class="recNote" style="margin-top:0"><b>Open media player</b> opens a tab that joins the broadcast room as an extra source. Pick a video file there and it plays to every guest on air and into OBS at the same time, so reactions line up with what the audience sees. Close the tab when the clip is done. The OBS link above is that clip on its own: add it as a browser source now and cut to it full screen when you play something. Keep the file on this computer; it is not uploaded anywhere.</p>
+
+					<div id="clipList" class="recList"><div class="emptyNote">Loading the clip library...</div></div>
+
+					<div id="clipTransport" class="recTop hidden" style="margin-top:12px;align-items:center">
+						<button class="btn sm primary" id="clipPause"><i class="las la-pause"></i> Pause</button>
+						<button class="btn sm" id="clipStop"><i class="las la-stop"></i> Stop</button>
+						<span id="clipNow" class="monHint" style="text-transform:none;letter-spacing:0"></span>
+						<div class="spacer"></div>
+						<label class="small muted" style="display:flex;align-items:center;gap:7px">
+							<input type="checkbox" id="clipPreviewAudio"> Hear it here
+						</label>
+					</div>
+					<video id="clipPreview" playsinline muted style="display:none;width:100%;max-width:520px;margin-top:12px;border-radius:10px;background:#000"></video>
+
+					<p class="recNote" style="margin-top:12px">Clips are <b>not streamed through the call</b>. Each guest and OBS plays its own copy from the studio, so a clip costs the room no bandwidth and everybody sees it at full quality. Add clips before the show with <code>studio/tools/add-clip.ps1</code> and deploy. Put the OBS link in your scene once: it stays black until you roll something.</p>
 				</div>
 			</div>
 
@@ -786,6 +801,9 @@
 		$("setApiKey").value = EV.apiKey || "";
 		renderApiInfo();
 		renderRoster(); // roster links depend on the current rooms
+		// deferred: the clip state is declared further down this script, so calling
+		// straight into it from here would hit the temporal dead zone
+		setTimeout(loadClipLibrary, 0);
 	}
 
 	function directorUrl(room, forEngine) {
@@ -1354,18 +1372,145 @@
 	// A media source joins the broadcast room like any other publisher, so one file
 	// reaches the guests and OBS together. A fixed push id means the OBS source can be
 	// set up before the show and simply lights up when a clip plays.
-	function mediaSid() { return "clip_" + EV.main; }
-	function mediaPlayerUrl() {
-		return Studio.buildUrl(Studio.vdoBase(), {
-			room: EV.main,
-			password: EV.pwd || false,
-			push: mediaSid(),
-			fileshare: null,
-			label: "Clip",
-			hidetranslate: null,
-			tips: 0
+	/* ================= CLIPS =================
+	   A clip is never published into the room as a stream. Doing that made this
+	   machine encode it and upload one copy per guest plus one for OBS, on top of
+	   the camera it was already sending, which saturates a home uplink and makes
+	   WebRTC degrade the whole room: the clip stutters and every guest's camera
+	   gets worse at the same moment.
+
+	   Instead everyone plays their own copy, fetched once from the CDN that serves
+	   this page. The call carries only the play command. This dashboard holds the
+	   authoritative position and calls it out every few seconds so the copies stay
+	   in step. */
+	let CLIPS = [];                 // the published library
+	const CLIPSTAT = {};            // sid -> "ready" | "playing" | "paused" | "fail"
+	let clipNowId = null, clipPlaying = false, clipSyncTimer = null;
+
+	function clipObsUrl() {
+		return new URL("clip.html?e=" + Studio.b64uEncode({ m: EV.main, p: EV.pwd || "" }), location.href).href;
+	}
+
+	// Sent to the whole room rather than guest by guest. The OBS clip source joins
+	// without publishing anything, so the director has no per-guest channel to it at
+	// all: a room-wide message is the only thing that reaches a silent member. Guests
+	// and the OBS page both filter these out of their chat, so nobody sees them.
+	function clipBroadcast(text) {
+		["green", "main"].forEach(room => {
+			try {
+				const w = frameOf(room).contentWindow;
+				if (w && typeof w.sendChatMessage === "function") w.sendChatMessage(text);
+			} catch (e) {}
 		});
 	}
+
+	function clipPosMs() { return Math.max(0, Math.round(($("clipPreview").currentTime || 0) * 1000)); }
+
+	function fmtClock(s) {
+		s = Math.max(0, Math.floor(s || 0));
+		return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+	}
+
+	async function loadClipLibrary() {
+		try {
+			const r = await fetch("clips/clips.json", { cache: "no-cache" });
+			CLIPS = r.ok ? await r.json() : [];
+			if (!Array.isArray(CLIPS)) CLIPS = [];
+		} catch (e) { CLIPS = []; }
+		renderClipList();
+	}
+
+	function renderClipList() {
+		const el = $("clipList");
+		if (!CLIPS.length) {
+			el.innerHTML = '<div class="emptyNote">No clips published yet. Add them before the show with ' +
+				'<code>studio\\tools\\add-clip.ps1 "C:\\path\\to\\clip.mp4"</code> then deploy.</div>';
+			return;
+		}
+		el.innerHTML = CLIPS.map(c => {
+			const live = clipNowId === c.id;
+			const where = c.type === "youtube" ? "YouTube" : (c.seconds ? fmtClock(c.seconds) : "video");
+			return '<div class="recRow' + (live ? " on" : "") + '">' +
+				'<span class="nm">' + escapeHtml(c.title || c.id) + '</span>' +
+				'<span class="st">' + (live ? '<span class="d"></span>ON AIR' : where) + '</span>' +
+				'<button class="btn sm" data-clip="load" data-id="' + escapeHtml(c.id) + '">Preload</button>' +
+				'<button class="btn sm primary" data-clip="play" data-id="' + escapeHtml(c.id) + '">' +
+				(live ? "Restart" : "Play") + '</button>' +
+				'</div>';
+		}).join("");
+	}
+
+	function renderClipReady() {
+		const guests = allGuests().map(g => g.sid);
+		if (!guests.length || !clipNowId) { $("clipReadyNote").textContent = ""; return; }
+		const ready = guests.filter(s => CLIPSTAT[s] === "ready" || CLIPSTAT[s] === "playing").length;
+		const bad = guests.filter(s => CLIPSTAT[s] === "fail");
+		$("clipReadyNote").textContent = ready + "/" + guests.length + " ready" +
+			(bad.length ? " · " + bad.length + " had a problem" : "");
+	}
+
+	function renderClipTransport() {
+		const on = !!clipNowId;
+		$("clipTransport").classList.toggle("hidden", !on);
+		$("clipPreview").style.display = on ? "block" : "none";
+		$("clipPause").innerHTML = clipPlaying
+			? '<i class="las la-pause"></i> Pause'
+			: '<i class="las la-play"></i> Resume';
+		const v = $("clipPreview");
+		$("clipNow").textContent = on ? fmtClock(v.currentTime) + (v.duration ? " / " + fmtClock(v.duration) : "") : "";
+		renderClipReady();
+	}
+
+	async function playClip(id) {
+		const c = CLIPS.find(x => String(x.id) === String(id));
+		if (!c) return;
+		clipNowId = id;
+		clipPlaying = true;
+		const v = $("clipPreview");
+
+		if (c.type === "youtube") {
+			// The dashboard cannot scrub a YouTube embed reliably enough to be the clock,
+			// so a YouTube clip simply starts everywhere and runs on its own.
+			v.removeAttribute("src");
+			v.load();
+			clipBroadcast("⏺CLIP PLAY " + id + " 0");
+			Studio.toast("Playing \u201C" + (c.title || id) + "\u201D on every guest and in OBS");
+			renderClipList(); renderClipTransport();
+			return;
+		}
+
+		v.src = "clips/" + c.src;
+		v.currentTime = 0;
+		try { await v.play(); } catch (e) { /* the preview is optional */ }
+		clipBroadcast("⏺CLIP PLAY " + id + " 0");
+		Studio.toast("Playing \u201C" + (c.title || id) + "\u201D on every guest and in OBS");
+
+		clearInterval(clipSyncTimer);
+		clipSyncTimer = setInterval(() => {
+			if (!clipNowId) return;
+			renderClipTransport();
+			if (clipPlaying) clipBroadcast("⏺CLIP SYNC " + clipPosMs());
+		}, 4000);
+		renderClipList(); renderClipTransport();
+	}
+
+	function stopClip() {
+		clearInterval(clipSyncTimer); clipSyncTimer = null;
+		clipNowId = null; clipPlaying = false;
+		const v = $("clipPreview");
+		try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) {}
+		clipBroadcast("⏺CLIP STOP");
+		renderClipList(); renderClipTransport();
+		Studio.toast("Clip stopped");
+	}
+
+	$("clipList").addEventListener("click", e => {
+		const b = e.target.closest("[data-clip]");
+		if (!b) return;
+		const id = b.dataset.id;
+		if (b.dataset.clip === "play") playClip(id);
+		else { clipBroadcast("⏺CLIP LOAD " + id); Studio.toast("Asked everyone to download that clip"); }
+	});
 
 	function recQ() { return parseInt($('recQuality').value, 10); }
 
@@ -1490,14 +1635,24 @@
 	// keep the elapsed counters ticking without waiting for a status report
 	setInterval(function () { if (anyRecording()) renderRecList(); }, 1000);
 
-	$("mediaOpen").addEventListener("click", () => {
-		window.open(mediaPlayerUrl(), "_blank", "noopener");
-		Studio.toast("Pick a video file in the new tab to play it to the room");
-	});
 	$("mediaCopyObs").addEventListener("click", async () => {
-		const ok = await Studio.copyText(soloLink(mediaSid(), EV.main));
-		Studio.toast(ok ? "OBS link for the clip copied. Add it as a browser source now." : "Copy failed", !ok);
+		const ok = await Studio.copyText(clipObsUrl());
+		Studio.toast(ok ? "OBS clip link copied. Add it as a browser source now; it stays black until you roll a clip." : "Copy failed", !ok);
 	});
+	$("clipPreloadAll").addEventListener("click", () => {
+		if (!CLIPS.length) { Studio.toast("No clips published yet", true); return; }
+		CLIPS.forEach(c => clipBroadcast("⏺CLIP LOAD " + c.id));
+		Studio.toast("Asked everyone to download the clips. Watch the Ready count.");
+	});
+	$("clipPause").addEventListener("click", () => {
+		const v = $("clipPreview");
+		if (clipPlaying) { v.pause(); clipBroadcast("⏺CLIP PAUSE " + clipPosMs()); }
+		else { v.play().catch(() => {}); clipBroadcast("⏺CLIP RESUME " + clipPosMs()); }
+		clipPlaying = !clipPlaying;
+		renderClipTransport();
+	});
+	$("clipStop").addEventListener("click", () => stopClip());
+	$("clipPreviewAudio").addEventListener("change", e => { $("clipPreview").muted = !e.target.checked; });
 
 	$("recAllBtn").addEventListener("click", () => setLocalRecAll(!anyRecording()));
 	$("recRefresh").addEventListener("click", () => { recPingAll(); Studio.toast("Asked every guest to re-report"); });
@@ -1644,6 +1799,16 @@
 		if (!room) return;
 		const text = String(d.chat.msg).replace(/<[^>]*>/g, "").trim();
 		if (!text) return;
+
+		// clip status reports ride the same channel: who has the file, who is playing
+		const cstat = text.match(/^⏺CSTAT\s+(ready|playing|paused|stopped|fail)(?:\s+(.*))?$/i);
+		if (cstat) {
+			const who = String(d.chat.label || "").replace(/<[^>]*>/g, "").replace(/:\s*$/, "").trim();
+			const g = allGuests().find(x => x.label === who) || allGuests().find(x => x.sid === who);
+			if (g) { CLIPSTAT[g.sid] = cstat[1].toLowerCase(); renderClipReady(); }
+			return;
+		}
+		if (/^⏺CLIP\b/.test(text)) return; // our own command echo, never chat
 
 		// recording status reports ride the chat channel but are not chat
 		const stat = text.match(/^⏺STAT\s+(on|off|fail)(?:\s+(.*))?$/i);
@@ -1811,6 +1976,9 @@
 				// producers are not guests: a co-producer's dashboard mounts director
 				// connections into these same rooms, and they must never appear on the board
 				if (String(rpc.streamID).indexOf("dir_") === 0) continue;
+				// the OBS clip source joins the room silently to receive play commands:
+				// it is a scene element, not a person, and never belongs on the board
+				if (String(rpc.streamID).indexOf("clip_") === 0) continue;
 				if (uuid === w.session.directorUUID) continue;
 				if ((w.session.directorList || []).indexOf(uuid) !== -1) continue;
 				// a guest who transferred away (or dropped) can leave a zombie rpc behind until
