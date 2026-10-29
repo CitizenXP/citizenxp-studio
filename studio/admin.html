@@ -1404,7 +1404,20 @@
 		});
 	}
 
-	function clipPosMs() { return Math.max(0, Math.round(($("clipPreview").currentTime || 0) * 1000)); }
+	// The position everyone is told to be at. Deliberately a wall clock rather than
+	// the preview element's currentTime: the preview can be blocked by autoplay
+	// policy, muted, throttled in a background tab or simply fail to load, and if the
+	// clock stopped with it the dashboard would spend the whole clip dragging every
+	// guest back to zero. The clip's own playback is the thing being kept in step, so
+	// the reference has to be independent of any one copy of it.
+	const clipClock = { startedAt: 0, offsetMs: 0, running: false };
+	function clipPosMs() {
+		if (!clipClock.running) return Math.max(0, Math.round(clipClock.offsetMs));
+		return Math.max(0, Math.round(clipClock.offsetMs + (Date.now() - clipClock.startedAt)));
+	}
+	function clipClockStart(fromMs) { clipClock.offsetMs = fromMs || 0; clipClock.startedAt = Date.now(); clipClock.running = true; }
+	function clipClockPause() { clipClock.offsetMs = clipPosMs(); clipClock.running = false; }
+	function clipClockReset() { clipClock.offsetMs = 0; clipClock.startedAt = 0; clipClock.running = false; }
 
 	function fmtClock(s) {
 		s = Math.max(0, Math.floor(s || 0));
@@ -1441,12 +1454,20 @@
 	}
 
 	function renderClipReady() {
-		const guests = allGuests().map(g => g.sid);
-		if (!guests.length || !clipNowId) { $("clipReadyNote").textContent = ""; return; }
-		const ready = guests.filter(s => CLIPSTAT[s] === "ready" || CLIPSTAT[s] === "playing").length;
-		const bad = guests.filter(s => CLIPSTAT[s] === "fail");
-		$("clipReadyNote").textContent = ready + "/" + guests.length + " ready" +
-			(bad.length ? " · " + bad.length + " had a problem" : "");
+		const guests = allGuests();
+		if (!guests.length) { $("clipReadyNote").textContent = ""; return; }
+		const st = s => CLIPSTAT[s.sid];
+		const ready = guests.filter(g => st(g) === "ready" || st(g) === "playing" || st(g) === "paused").length;
+		// A guest whose tab is in the background has the file but cannot decode it, so
+		// they would freeze on the first frame. Name them: the fix is to tell them to
+		// come back to the studio tab, and it takes two seconds.
+		const hidden = guests.filter(g => st(g) === "hidden");
+		const bad = guests.filter(g => st(g) === "fail");
+		let txt = ready + "/" + guests.length + " ready";
+		if (hidden.length) txt += " · " + hidden.map(g => g.label).join(", ") + " must return to the studio tab";
+		if (bad.length) txt += " · " + bad.length + " had a problem";
+		$("clipReadyNote").textContent = txt;
+		$("clipReadyNote").style.color = (hidden.length || bad.length) ? "var(--warn)" : "";
 	}
 
 	function renderClipTransport() {
@@ -1456,8 +1477,11 @@
 		$("clipPause").innerHTML = clipPlaying
 			? '<i class="las la-pause"></i> Pause'
 			: '<i class="las la-play"></i> Resume';
-		const v = $("clipPreview");
-		$("clipNow").textContent = on ? fmtClock(v.currentTime) + (v.duration ? " / " + fmtClock(v.duration) : "") : "";
+		// show the authoritative position, not the preview's, so the readout matches
+		// what the guests were actually told
+		const c = CLIPS.find(x => String(x.id) === String(clipNowId));
+		const len = c && c.seconds ? c.seconds : 0;
+		$("clipNow").textContent = on ? fmtClock(clipPosMs() / 1000) + (len ? " / " + fmtClock(len) : "") : "";
 		renderClipReady();
 	}
 
@@ -1468,26 +1492,35 @@
 		clipPlaying = true;
 		const v = $("clipPreview");
 
+		// Start the clock and tell everyone BEFORE touching the local preview, so a
+		// preview that refuses to autoplay cannot delay or skew what the guests get.
+		clipClockStart(0);
+		clipBroadcast("⏺CLIP PLAY " + id + " 0");
+
 		if (c.type === "youtube") {
-			// The dashboard cannot scrub a YouTube embed reliably enough to be the clock,
-			// so a YouTube clip simply starts everywhere and runs on its own.
+			// No local preview for a YouTube clip: the dashboard would need the embed API
+			// too, and the wall clock below keeps everyone in step without it.
 			v.removeAttribute("src");
 			v.load();
-			clipBroadcast("⏺CLIP PLAY " + id + " 0");
-			Studio.toast("Playing \u201C" + (c.title || id) + "\u201D on every guest and in OBS");
-			renderClipList(); renderClipTransport();
-			return;
+		} else {
+			v.src = "clips/" + c.src;
+			v.currentTime = 0;
+			v.play().catch(() => { /* the preview is optional, the clock is not */ });
 		}
-
-		v.src = "clips/" + c.src;
-		v.currentTime = 0;
-		try { await v.play(); } catch (e) { /* the preview is optional */ }
-		clipBroadcast("⏺CLIP PLAY " + id + " 0");
-		Studio.toast("Playing \u201C" + (c.title || id) + "\u201D on every guest and in OBS");
+		Studio.toast("Playing “" + (c.title || id) + "” on every guest and in OBS");
 
 		clearInterval(clipSyncTimer);
 		clipSyncTimer = setInterval(() => {
 			if (!clipNowId) return;
+			// once the clip has run past its end, stop calling out a position: the
+			// heartbeat would otherwise keep re-seeking everyone into a finished video
+			const len = (c.seconds || 0) * 1000;
+			if (len && clipPosMs() > len) { clipClockPause(); clipPlaying = false; renderClipTransport(); return; }
+			// keep the local preview honest too, without letting it steer anything
+			if (clipPlaying && c.type !== "youtube" && v.readyState > 1) {
+				const want = clipPosMs() / 1000;
+				if (Math.abs(v.currentTime - want) > 0.75) { try { v.currentTime = want; } catch (e) {} }
+			}
 			renderClipTransport();
 			if (clipPlaying) clipBroadcast("⏺CLIP SYNC " + clipPosMs());
 		}, 4000);
@@ -1497,6 +1530,7 @@
 	function stopClip() {
 		clearInterval(clipSyncTimer); clipSyncTimer = null;
 		clipNowId = null; clipPlaying = false;
+		clipClockReset();
 		const v = $("clipPreview");
 		try { v.pause(); v.removeAttribute("src"); v.load(); } catch (e) {}
 		clipBroadcast("⏺CLIP STOP");
@@ -1646,8 +1680,15 @@
 	});
 	$("clipPause").addEventListener("click", () => {
 		const v = $("clipPreview");
-		if (clipPlaying) { v.pause(); clipBroadcast("⏺CLIP PAUSE " + clipPosMs()); }
-		else { v.play().catch(() => {}); clipBroadcast("⏺CLIP RESUME " + clipPosMs()); }
+		if (clipPlaying) {
+			clipClockPause();
+			clipBroadcast("⏺CLIP PAUSE " + clipPosMs());
+			try { v.pause(); } catch (e) {}
+		} else {
+			clipClockStart(clipPosMs());
+			clipBroadcast("⏺CLIP RESUME " + clipPosMs());
+			v.play().catch(() => {});
+		}
 		clipPlaying = !clipPlaying;
 		renderClipTransport();
 	});
@@ -1801,7 +1842,7 @@
 		if (!text) return;
 
 		// clip status reports ride the same channel: who has the file, who is playing
-		const cstat = text.match(/^⏺CSTAT\s+(ready|playing|paused|stopped|fail)(?:\s+(.*))?$/i);
+		const cstat = text.match(/^⏺CSTAT\s+(ready|hidden|playing|paused|stopped|fail)(?:\s+(.*))?$/i);
 		if (cstat) {
 			const who = String(d.chat.label || "").replace(/<[^>]*>/g, "").replace(/:\s*$/, "").trim();
 			const g = allGuests().find(x => x.label === who) || allGuests().find(x => x.sid === who);

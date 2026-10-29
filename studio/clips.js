@@ -30,7 +30,8 @@
 		var onShow = opts.onShow || function () {};
 
 		var manifest = null, current = null, yt = null, ytReady = false, ytApi = null;
-		var cached = {};
+		var cached = {};    // clip url -> blob url
+		var prepping = {};  // clip id -> in-flight prepare promise
 
 		function setBusy(on, text) {
 			if (busyEl) busyEl.classList.toggle("busy", !!on);
@@ -72,17 +73,36 @@
 			return ytApi;
 		}
 
-		// Pull the whole file into the browser cache, so pressing play starts instantly
-		// instead of buffering in front of the audience.
+		// Hold the whole clip in the page as a blob rather than trusting the HTTP cache.
+		// Two things make the cache unreliable for this: a <video> element fetches by
+		// byte range, which is a different cache entry from the plain GET a preload
+		// makes, and GitHub Pages only marks these files cacheable for ten minutes, so
+		// a clip preloaded in the green room can be gone by the time it is played. A
+		// blob URL is immune to both, and playback then starts from memory instantly.
 		function prefetch(url) {
-			if (cached[url]) return Promise.resolve();
-			return fetch(url, { cache: "force-cache" })
+			if (cached[url]) return Promise.resolve(cached[url]);
+			return fetch(url)
 				.then(function (r) { return r.ok ? r.blob() : null; })
-				.then(function (b) { if (b) cached[url] = true; })
-				.catch(function () { /* playback still works, it just buffers */ });
+				.then(function (b) {
+					if (!b || !b.size) return null;
+					cached[url] = URL.createObjectURL(b);
+					return cached[url];
+				})
+				.catch(function () { return null; }); // fall back to streaming from the network
 		}
 
+		// Preparing is cached per clip and returns a promise that only settles once the
+		// element actually has a source. Without that, a PLAY arriving while a LOAD is
+		// still downloading would call play() on an empty element, which rejects, and
+		// the guest would sit frozen until the next sync heartbeat rescued them.
 		function prepare(id) {
+			if (prepping[id]) return prepping[id];
+			var p = prepareNow(id).catch(function (e) { delete prepping[id]; throw e; });
+			prepping[id] = p;
+			return p;
+		}
+
+		function prepareNow(id) {
 			return find(id).then(function (c) {
 				if (!c) { report("fail", "clip " + id + " is not published"); return null; }
 				current = c;
@@ -107,14 +127,45 @@
 				video.style.display = "block";
 				var url = "clips/" + c.src;
 				setBusy(true, "Loading clip");
-				return prefetch(url).then(function () {
-					if (video.getAttribute("src") !== url) { video.setAttribute("src", url); video.load(); }
-					setBusy(false);
-					report("ready", id);
-					return c;
+				return prefetch(url).then(function (blobUrl) {
+					var use = blobUrl || url; // no blob means stream it and hope
+					if (video.getAttribute("src") !== use) { video.setAttribute("src", use); video.load(); }
+					return decoded(video).then(function (ok) {
+						setBusy(false);
+						if (!blobUrl) { report("fail", "could not download the clip"); return c; }
+						// Holding the bytes is not the same as being able to play them:
+						// a browser will not decode media in a hidden tab, so a guest who
+						// has alt-tabbed away looks ready but would freeze on the first
+						// frame. Say which it is, so the board shows the truth.
+						report(ok ? "ready" : "hidden", id);
+						return c;
+					});
 				});
 			});
 		}
+
+		// Resolves true once the element has actually buffered a frame, false if it has
+		// not managed it within a couple of seconds (the usual reason being a hidden
+		// tab, where browsers decline to decode at all).
+		function decoded(el) {
+			if (el.readyState >= 2) return Promise.resolve(true);
+			return new Promise(function (resolve) {
+				var done = false;
+				var finish = function (v) { if (done) return; done = true; el.removeEventListener("loadeddata", ok); resolve(v); };
+				var ok = function () { finish(true); };
+				el.addEventListener("loadeddata", ok);
+				setTimeout(function () { finish(el.readyState >= 2); }, 2500);
+			});
+		}
+
+		// A tab that comes back to the front can decode at last. Kick the element then,
+		// and let the producer's next sync heartbeat put the guest back in step.
+		document.addEventListener("visibilitychange", function () {
+			if (document.hidden || !current || current.type === "youtube") return;
+			if (video.readyState >= 2) return;
+			try { video.load(); } catch (e) {}
+			decoded(video).then(function (ok) { if (ok) report("ready", current.id); });
+		});
 
 		function show(on) {
 			if (stage) stage.classList.toggle("clipOn", !!on);
@@ -122,8 +173,9 @@
 		}
 
 		function play(id, ms) {
-			var p = (current && String(current.id) === String(id)) ? Promise.resolve(current) : prepare(id);
-			return p.then(function (c) {
+			// always go through prepare: it is cached, and it is the only thing that
+			// guarantees the element has a source before play() is called on it
+			return prepare(id).then(function (c) {
 				if (!c) return;
 				show(true);
 				var at = (ms || 0) / 1000;

@@ -60,7 +60,11 @@ Clips are not streamed through the call. Every guest and OBS plays its own copy,
 clip costs the room no bandwidth and nobody sees a stutter.
 
 1. [ ] Once guests are in the green room, press **Preload on everyone** and wait for
-       the Ready count to reach everybody. This is the step that makes playback instant.
+       the Ready count to reach everybody. This is the step that makes playback instant:
+       without it a guest on a weak connection can sit buffering for half a minute.
+       If the line names someone as needing to **return to the studio tab**, say so on
+       the call. A browser will not decode video in a hidden tab, so they would freeze
+       on the first frame. It clears a few seconds after they come back.
 2. [ ] Press **Play** next to the clip. Guests switch to the clip with each other in a
        strip along the bottom, and your OBS clip source cuts to the same frame.
 3. [ ] **Pause**, **Resume** and **Stop** stay in the control room. Stop returns everyone

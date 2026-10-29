@@ -53,8 +53,13 @@ not been deployed does not exist as far as your guests are concerned.
 - **These files are public.** Anyone who knows the URL can download them. Do not put
   embargoed or licensed material here; use a YouTube unlisted link instead.
 - **Preload before the show.** The control room has a *Preload on everyone* button.
-  Press it once your guests are in the green room and watch the Ready count. A clip
-  that is already in each guest's browser cache starts instantly.
+  Press it once your guests are in the green room and watch the Ready count. Measured
+  on a 600 kbps connection: a preloaded guest started in under a second, while the
+  same guest with no preload took 28 seconds of buffering on air.
+- **A guest who has tabbed away cannot play a clip.** Browsers refuse to decode video
+  in a hidden tab, so they hold the file but would freeze on the first frame. The
+  Ready line names anyone in that state; tell them to come back to the studio tab and
+  it clears within a few seconds.
 
 ## On the day
 
