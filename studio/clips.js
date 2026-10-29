@@ -31,7 +31,8 @@
 
 		var manifest = null, current = null, yt = null, ytReady = false, ytApi = null;
 		var playing = false;   // something is on air: staging must not touch the element
-		var cached = {};    // clip url -> blob url
+		var cached = {};     // clip url -> blob url
+		var cacheSize = {};  // clip url -> bytes held    // clip url -> blob url
 		var prepping = {};  // clip id -> in-flight prepare promise
 
 		function setBusy(on, text) {
@@ -80,13 +81,46 @@
 		// makes, and GitHub Pages only marks these files cacheable for ten minutes, so
 		// a clip preloaded in the green room can be gone by the time it is played. A
 		// blob URL is immune to both, and playback then starts from memory instantly.
+		// A whole library held at once would be a lot of memory on a guest's machine,
+		// on top of whatever their recording is doing. Keep the most recently staged
+		// clips up to a budget and release the oldest, which for a normal show means
+		// nothing is ever released.
+		var CACHE_BUDGET = 500 * 1024 * 1024;
+		var cacheOrder = [];   // urls, oldest first
+		var cacheBytes = 0;
+
+		function cacheTrim(keepUrl) {
+			while (cacheBytes > CACHE_BUDGET && cacheOrder.length > 1) {
+				var oldest = cacheOrder[0];
+				if (oldest === keepUrl || (current && ("clips/" + current.src) === oldest)) {
+					// never release what is on air, or what we are about to play
+					if (cacheOrder.length < 2) break;
+					cacheOrder.push(cacheOrder.shift());
+					continue;
+				}
+				cacheOrder.shift();
+				try { URL.revokeObjectURL(cached[oldest]); } catch (e) {}
+				cacheBytes -= (cacheSize[oldest] || 0);
+				delete cached[oldest];
+				delete cacheSize[oldest];
+			}
+		}
+
 		function prefetch(url) {
-			if (cached[url]) return Promise.resolve(cached[url]);
+			if (cached[url]) {
+				var i = cacheOrder.indexOf(url);
+				if (i > -1) { cacheOrder.splice(i, 1); cacheOrder.push(url); }
+				return Promise.resolve(cached[url]);
+			}
 			return fetch(url)
 				.then(function (r) { return r.ok ? r.blob() : null; })
 				.then(function (b) {
 					if (!b || !b.size) return null;
 					cached[url] = URL.createObjectURL(b);
+					cacheSize[url] = b.size;
+					cacheBytes += b.size;
+					cacheOrder.push(url);
+					cacheTrim(url);
 					return cached[url];
 				})
 				.catch(function () { return null; }); // fall back to streaming from the network
