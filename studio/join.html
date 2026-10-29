@@ -136,10 +136,27 @@
 		backdrop-filter: blur(16px);
 		box-shadow: var(--shadow-2);
 		z-index: 50;
-		transition: transform 0.32s var(--ease);
+		transition: transform 0.32s var(--ease), opacity 0.45s var(--ease);
 	}
 	/* slide the dock clear of the chat drawer instead of letting it sit underneath */
 	#controls.chatShift { transform: translateX(calc(-50% - 165px)); }
+	/* A guest told us the dock pulls the eye away from the faces. It now fades out
+	   once the call goes quiet and comes straight back on the first movement, the way
+	   a video player's controls do. It stays put while the pointer is on it, while
+	   chat is open, and whenever the mic or camera is off, so nobody is ever muted
+	   with the reason hidden off screen. */
+	#controls.idle { opacity: 0; pointer-events: none; }
+
+	/* The drawer used to sit on top of the call and cover whoever was on the right.
+	   Narrowing the call instead hands VDO a smaller box, and it reflows its own grid
+	   to fit, so the faces shift left and every one of them stays fully visible.
+	   It has to be an explicit width with right:auto. An iframe is a replaced element,
+	   and the frame is pinned by inset:0, so leaving both edges set makes the browser
+	   keep the full width and simply slide the box left, cropping it. width:auto is no
+	   use either: on a replaced element auto means its intrinsic 300px, not "reach the
+	   right edge". The width is deliberately not transitioned, since animating it would
+	   have VDO re-layout its grid on every frame of the slide. */
+	#stage.chatOn > iframe { width: calc(100% - 330px); right: auto; }
 	.ctl {
 		display: flex; flex-direction: column; align-items: center; gap: 4px;
 		background: none; border: none; cursor: pointer; color: var(--text);
@@ -266,6 +283,7 @@
 	@media (max-width: 620px) {
 		#chatPanel { width: 100%; max-width: 100%; }
 		#controls.chatShift { transform: translateX(-50%); } /* drawer is full-width here, nowhere to shift to */
+		#stage.chatOn > iframe { width: 100%; right: 0; }      /* nor anything to narrow */
 		#controls { gap: 2px; padding: 8px 10px; bottom: 12px; }
 		.ctl { width: 52px; }
 		.ctl .bubble { width: 42px; height: 42px; }
@@ -616,7 +634,7 @@
 		" @keyframes adOnAirFlash { 0%,55% { box-shadow: inset 0 0 max(10vw,10vh) green; } 100% { box-shadow: inset 0 0 0 rgba(0,128,0,0); } }";
 	iframe.addEventListener("load", () => {
 		if (!iframe.src) return;
-		setTimeout(() => { Studio.send(iframe, { style: CHROME_HIDE_CSS }); watchForDirectorTiles(); blockVideoMenu(); }, 800);
+		setTimeout(() => { Studio.send(iframe, { style: CHROME_HIDE_CSS }); watchForDirectorTiles(); blockVideoMenu(); trackDockActivity(); }, 800);
 	});
 
 	/* ---------- kill VDO's right-click video menu for guests ----------
@@ -1017,11 +1035,18 @@
 		$("chatPanel").classList.toggle("open", open);
 		$("chatBtn").classList.toggle("on", open);
 		$("controls").classList.toggle("chatShift", open);
+		$("stage").classList.toggle("chatOn", open); // shifts the faces left, see CSS
+		$("stage").scrollLeft = 0;                   // belt and braces, see preventScroll below
+		dockPoke();                                  // never fade out mid-conversation
 		if (open) {
 			chatUnread = 0;
 			$("chatDot").classList.remove("show");
 			$("chatLog").scrollTop = $("chatLog").scrollHeight;
-			setTimeout(() => $("chatText").focus(), 340);
+			// preventScroll matters more than it looks. The drawer is parked off the right
+			// edge of #stage, which is overflow:hidden, so focusing the input the ordinary
+			// way makes the browser scroll the stage sideways to reveal it. That shunts the
+			// whole call left and crops it, and it never scrolls back.
+			setTimeout(() => $("chatText").focus({ preventScroll: true }), 340);
 		}
 	}
 	function sendChatText() {
@@ -1050,6 +1075,47 @@
 		if (!call.classList.contains("prestart")) return;
 		call.classList.remove("prestart");
 		setChatOpen(false); // start closed, with the dock un-shifted
+		dockPoke();         // and visible, until the call has been quiet for a moment
+	}
+
+	/* ---------- dock auto-hide ----------
+	   The dock is the only piece of our own furniture that sits over the call, so it is
+	   the only thing that can distract from the people on it. It fades after a few quiet
+	   seconds and any movement brings it back.
+
+	   The catch is that an iframe swallows mouse events, so while the cursor is over the
+	   call itself the parent document hears nothing and the dock would never return.
+	   Same-origin lets us listen inside the frame too, which is what makes moving the
+	   mouse over someone's face bring the dock back. */
+	const DOCK_IDLE_MS = 4000;
+	let dockTimer = 0, dockHover = false;
+	function dockIdleCheck() {
+		// Reasons to stay visible. Re-arm rather than give up, so the dock still fades
+		// once the reason goes away without needing another nudge.
+		if (dockHover || chatOpen || !micOn || !camOn) {
+			dockTimer = setTimeout(dockIdleCheck, DOCK_IDLE_MS);
+			return;
+		}
+		$("controls").classList.add("idle");
+	}
+	function dockPoke() {
+		$("controls").classList.remove("idle");
+		clearTimeout(dockTimer);
+		dockTimer = setTimeout(dockIdleCheck, DOCK_IDLE_MS);
+	}
+	["mousemove", "pointerdown", "keydown"].forEach(ev =>
+		document.addEventListener(ev, dockPoke, { passive: true }));
+	$("controls").addEventListener("mouseenter", () => { dockHover = true; dockPoke(); });
+	$("controls").addEventListener("mouseleave", () => { dockHover = false; dockPoke(); });
+
+	function trackDockActivity() {
+		try {
+			const w = iframe.contentWindow;
+			if (!w || w.__adDockTracked) return;
+			["mousemove", "pointerdown", "keydown", "touchstart"].forEach(ev =>
+				w.document.addEventListener(ev, dockPoke, { passive: true, capture: true }));
+			w.__adDockTracked = true;
+		} catch (e) {}
 	}
 
 	/* ---------- controls ---------- */
