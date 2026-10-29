@@ -56,31 +56,30 @@ Send each guest their invite plus these four lines:
 
 ## Playing a clip
 
-1. [ ] **Overview: Play a video to the room**, press **Add video** and pick the file.
-       It joins the broadcast as its own source: the guests see and hear it in the call,
-       and OBS takes it from the clip link already in your scene.
-2. [ ] The guests shrink to small boxes with the video large. Uncheck the box in the
-       panel if you would rather leave their layout alone.
-3. [ ] **Play another** swaps in the next file. **End clip** returns everyone to normal.
-4. [ ] **Leave the dashboard tab on screen while a clip plays.** A browser stops
-       decoding video in a tab that is buried, and that is what makes a clip stutter.
-       The small picture in the panel is your confidence monitor.
+Clips are staged on every machine ahead of time and played on your cue, so rolling
+one costs your upload nothing. That is what keeps your connection free for OBS.
 
-### Upload cost, before it surprises you
+1. [ ] Before the guests arrive, or while they settle in, press **Stage all**. Each
+       clip then shows how many guests hold it.
+2. [ ] When a clip is coming up, press **Stage** on it if you have not already, and
+       wait for the count to reach everybody.
+3. [ ] Cut your OBS scene to the clip source. It is showing the first frame, waiting.
+4. [ ] Press **Play**. It rolls on every guest and in OBS at once, and the guests
+       shrink to small boxes around it.
+5. [ ] **Pause**, **Resume** and **Stop** stay in the control room. Stop returns
+       everyone to the call.
+6. [ ] You can **Stage** the next clip while one is on air without disturbing it.
 
-One copy of the clip goes to each guest, so the cost to your upload grows with the
-panel. The line next to the quality box states it: left to decide for itself the
-studio settled at about **1.5 Mbps per guest**, so roughly **6 Mbps with four guests
-on air**.
+If the transport line names someone as needing to **return to the studio tab**, say so
+on the call: a browser will not decode video in a hidden tab, so they would freeze on
+the first frame.
 
-- [ ] Check your actual upload speed before the show. If it is under about 15 Mbps,
-      set the quality box to **600 kbps each** (about 2.4 Mbps for four guests) and
-      watch a clip through once in a dry run.
-- [ ] The ceiling applies only to the guests' copies. **OBS always receives the clip
-      at full quality**, so the audience never pays for it. Verified at 2 Mbps / 540p
-      to OBS while the guests were held at 350 kbps each.
-- [ ] If a clip does struggle, the guests' view of each other is not at risk: their
-      cameras travel directly between them and never cross your connection.
+### The unplanned case
+
+**Play a file from this computer** streams a file straight into the room, for
+something nobody prepared. It is the one clip path that **does** use your upload,
+about 1 Mbps per guest at the default cap, and the panel states the figure. While you
+are streaming to several platforms at once, stage a clip instead wherever you can.
 
 ## Wrapping
 

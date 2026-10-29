@@ -198,53 +198,50 @@ will be editing.
 
 ## Playing a video to the room and the stream
 
-**Overview: Play a video to the room**, then **Add video**. Pick any file your browser
-can play and it joins the broadcast room as its own source, exactly like a guest. The
-guests see and hear it in the call, OBS takes it from an ordinary solo link
-(**Copy OBS link for clips**, which never changes, so it can live in your scene), and
-VDO's own focus mode makes the video large with the faces in a strip. **Play another**
-swaps the file, **End clip** restores the normal layout.
+Two ways, and the first is the one to use on a show day.
 
-There is nothing to prepare, nothing to upload and no size limit.
+### Staged clips, which cost no upload at all
 
-### What a clip costs your upload
+Clips live in `studio/clips/` and are served from the same place as the studio, so
+every guest and the OBS clip source fetches its own copy. **Stage** downloads a clip
+onto everyone and holds it on the first frame: nothing is shown to the guests, but the
+OBS source is showing that frame, so you can cut your scene to it and see it waiting.
+**Play** rolls it everywhere at once.
 
-One copy goes to each guest. Measured with the clip large on their screens, which is
-what the focus mode does, each copy settled at about **1.5 Mbps**, so about **6 Mbps
-with four guests**. The panel states the figure for the number of people currently on
-air rather than leaving it to be discovered mid-show.
+Measured with four guests on air:
 
-The **quality box** sets a ceiling per copy, applied where a ceiling is actually
-honoured: on each outgoing sender. Verified binding to within 2 kbps of the number
-chosen. Two deliberate exceptions:
+| | producer's upload |
+|---|---|
+| Show running, nothing playing | 0 kbps |
+| Clip staged, waiting | 0 kbps |
+| **Clip playing** | **0 kbps** |
+| The same clip streamed from the producer's computer | 3883 kbps |
 
-- **OBS is never capped.** A solo link is the audience's feed, so throttling it would
-  defeat the purpose. With the guests held at 350 kbps each, the OBS copy still ran at
-  2 Mbps and 540p.
-- **The clip source does not watch anyone.** It joins with `&novideo&noaudio`, because
-  otherwise every guest opens an extra outbound copy of their own camera to it, which
-  measured at roughly 500 kbps of wasted upload each, paid by the people on the weakest
-  connections.
+Spread between the four guests once rolling: **0.00s**. OBS receives it at the clip's
+own resolution, 1920x1080 for the episode 2 ad set. Staging the next clip while one is
+on air does not disturb it, and the swap when you play it takes about a second.
 
-Worth knowing: guest cameras travel directly between the guests and never cross the
-producer's connection. If a clip ever does saturate your uplink, the clip is what
-suffers, not the guests' view of each other.
+Add clips with `studio/tools/add-clip.ps1` and deploy. See
+[studio/clips/README.md](clips/README.md).
 
-### Why it used to stutter, and why it does not now
+### A file straight from your computer, for the unplanned moment
 
-It was never bandwidth. VDO publishes a file by playing it in a `<video>` element and
-calling `captureStream()` on it, and a browser stops decoding video in a tab that is
-buried, which is exactly what the old pop-out media window became the moment you
-clicked back to the dashboard. The clip source now lives in the dashboard itself, so it
-keeps decoding for as long as that tab is on screen, and the small picture in the panel
-tells you at a glance that it is.
+**Play a file from this computer** publishes the file into the room as its own source,
+no preparation needed. This is the path that **does** use your upload, one copy per
+guest, and the panel states what it will cost before you start. The quality box sets a
+ceiling that is applied per outgoing sender, and OBS is deliberately exempt from it, so
+the audience's copy is never throttled to protect the guests'.
 
-Measured with four guests on air: the clip reached every guest with no freezes, their
-cameras were untouched, a full-size viewer such as OBS received the full 1280x720, and
-the producer's total upload for all four copies was about 2 Mbps.
+Either way the guests see the video large with each other in a strip, and the OBS clip
+link covers both: one browser source in your scene, added once.
 
-The one rule that follows from this: **keep the dashboard tab visible while a clip
-plays.** Put it on a second screen if you have one.
+### Why a clip is never published into the call unless you ask for it
+
+VDO publishes a file by playing it in a `<video>` element and calling `captureStream()`
+on it, and a browser stops decoding video in a tab that is buried. That, not bandwidth,
+is what made the old pop-out media window stutter. The streaming path now runs inside
+the dashboard where it keeps decoding, and the staged path avoids the question entirely
+by never sending the video anywhere.
 
 ## Handing recordings back at the end
 

@@ -1,0 +1,93 @@
+[
+	{
+		"id": "1-jamieager-congress-northcarolina",
+		"title": "Jamie Ager, Congress, North Carolina",
+		"type": "file",
+		"src": "1-jamieager-congress-northcarolina.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "10-julianastratton-senator-illinois",
+		"title": "Juliana Stratton, Senator, Illinois",
+		"type": "file",
+		"src": "10-julianastratton-senator-illinois.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "11-mikecollins-senator-georgia",
+		"title": "Mike Collins, Senator, Georgia",
+		"type": "file",
+		"src": "11-mikecollins-senator-georgia.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "12-joshturek-senator-iowa",
+		"title": "Josh Turek, Senator, Iowa",
+		"type": "file",
+		"src": "12-joshturek-senator-iowa.mp4",
+		"seconds": 149.2
+	},
+	{
+		"id": "2-jenniferbalkcom-congress-northcarolina",
+		"title": "Jennifer Balkcom, Congress, North Carolina",
+		"type": "file",
+		"src": "2-jenniferbalkcom-congress-northcarolina.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "3-stevehilton-governor-california",
+		"title": "Steve Hilton, Governor, California",
+		"type": "file",
+		"src": "3-stevehilton-governor-california.mp4",
+		"seconds": 52.9
+	},
+	{
+		"id": "4-jamestalerico-senator-texas",
+		"title": "James Talerico, Senator, Texas",
+		"type": "file",
+		"src": "4-jamestalerico-senator-texas.mp4",
+		"seconds": 60.1
+	},
+	{
+		"id": "5-paigecognetti-congress-pensylvania",
+		"title": "Paige Cognetti, Congress, Pensylvania",
+		"type": "file",
+		"src": "5-paigecognetti-congress-pensylvania.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "6-robbresnahan-congress-pensylvania",
+		"title": "Rob Bresnahan, Congress, Pensylvania",
+		"type": "file",
+		"src": "6-robbresnahan-congress-pensylvania.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "7-bruceblakeman-governor-newyork",
+		"title": "Bruce Blakeman, Governor, New York",
+		"type": "file",
+		"src": "7-bruceblakeman-governor-newyork.mp4",
+		"seconds": 52.6
+	},
+	{
+		"id": "8-kathyhochul-governor-newyork",
+		"title": "Kathy Hochul, Governor, New York",
+		"type": "file",
+		"src": "8-kathyhochul-governor-newyork.mp4",
+		"seconds": 73.6
+	},
+	{
+		"id": "9-michaellee-statesenate-northcarolina",
+		"title": "Michael Lee, State Senate, North Carolina",
+		"type": "file",
+		"src": "9-michaellee-statesenate-northcarolina.mp4",
+		"seconds": 30.0
+	},
+	{
+		"id": "tesla",
+		"title": "Tesla",
+		"type": "file",
+		"src": "tesla.mp4",
+		"seconds": 45.7
+	}
+]
