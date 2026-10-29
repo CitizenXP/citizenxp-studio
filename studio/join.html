@@ -552,6 +552,12 @@
 			tips: 0
 		};
 		if (pwd) params.password = pwd;
+		// Troubleshooting escape hatch. Add &relay to this page's own URL to route this
+		// guest's media through a relay server instead of needing a direct path to every
+		// other guest. It fixes the case where two guests can see everyone except each
+		// other, which is a blocked path between those two machines, not a studio fault.
+		// Costs a little latency, so it is per guest and off unless asked for.
+		if (urlParams.has("relay")) params.relay = null;
 		// producer-chosen feature flags baked into the invite (see admin.html guestLink)
 		const o = EV.o || {};
 		if (o.ng) params.noisegate = null;     // auto-duck mic when not speaking
