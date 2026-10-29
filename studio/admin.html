@@ -1845,7 +1845,10 @@
 		const gs = allGuests();
 		if (on && !gs.length) { Studio.toast("No guests connected yet", true); return; }
 		recArmed = on;
-		gs.forEach(g => { delete recHold[g.sid]; }); // a blanket instruction clears holds
+		// Starting clears every hold. Stopping sets one on everybody, so that a stop is
+		// final even if the session is somehow still armed: the 15s watchdog skips any
+		// guest on hold, and without this it would start them all again seconds later.
+		gs.forEach(g => { if (on) delete recHold[g.sid]; else recHold[g.sid] = true; });
 		gs.forEach(g => setLocalRec(g.sid, on));
 		Studio.toast(on
 			? "Asked " + gs.length + " guest" + (gs.length > 1 ? "s" : "") + " to start recording locally"
