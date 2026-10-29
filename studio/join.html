@@ -43,36 +43,6 @@
 	#stage { flex: 1; position: relative; min-height: 0; background: #000; overflow: hidden; }
 	#stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
 
-	/* A clip plays from the guest's OWN copy of the file, never through the call, so
-	   it costs the room no bandwidth at all. While one is on screen the faces drop to
-	   a strip along the bottom: everyone can still read the room while watching. */
-	#clipLayer {
-		position: absolute; inset: 0; z-index: 40; background: #000;
-		display: none; align-items: center; justify-content: center; overflow: hidden;
-	}
-	#stage.clipOn #clipLayer { display: flex; }
-	#stage.clipOn > iframe { top: auto; bottom: 0; height: 24%; border-top: 1px solid var(--line-strong); }
-	#stage.clipOn #clipLayer { inset: 0 0 24% 0; }
-	#clipLayer video, #clipLayer #clipYt, #clipLayer #clipYt iframe {
-		width: 100%; height: 100%; display: block; border: 0; background: #000;
-	}
-	#clipLayer video { object-fit: contain; }
-	#clipBusy {
-		position: absolute; z-index: 2; display: none; flex-direction: column; gap: 10px;
-		align-items: center; color: var(--text-dim); font-size: 0.86rem; letter-spacing: 0.04em;
-	}
-	#clipLayer.busy #clipBusy { display: flex; }
-	#clipBusy .ring {
-		width: 30px; height: 30px; border-radius: 50%;
-		border: 2px solid var(--line-strong); border-top-color: var(--accent);
-		animation: clipSpin 0.9s linear infinite;
-	}
-	@keyframes clipSpin { to { transform: rotate(360deg); } }
-	@media (max-width: 760px) {
-		#stage.clipOn > iframe { height: 30%; }
-		#stage.clipOn #clipLayer { inset: 0 0 30% 0; }
-	}
-
 	#waitOverlay {
 		position: absolute; inset: 0; display: flex; flex-direction: column; gap: 16px;
 		align-items: center; justify-content: center; text-align: center;
@@ -320,11 +290,6 @@
 			<p>Our team can see you and will bring you in shortly. Make sure your camera and
 			microphone look good. You can adjust them with the buttons below.</p>
 		</div>
-		<div id="clipLayer">
-			<div id="clipBusy"><div class="ring"></div><span id="clipBusyText">Loading clip</span></div>
-			<video id="clipVideo" playsinline preload="auto"></video>
-			<div id="clipYt"></div>
-		</div>
 		<div id="cueBanner"><span class="from" id="cueFrom"></span><span id="cueText"></span></div>
 		<div id="cueTimer"><div class="t" id="cueTimerVal">0:00</div><div class="lbl">time left</div></div>
 		<div id="recSaved"></div>
@@ -381,7 +346,6 @@
 <div id="liveFlash"><div>&#128308; YOU'RE LIVE</div></div>
 
 <script src="common.js"></script>
-<script src="clips.js"></script>
 <script>
 "use strict";
 (() => {
@@ -914,22 +878,6 @@
 			w.sendChatMessage("\u23FASTAT " + state + (detail ? " " + detail : ""));
 		} catch (e) {}
 	}
-
-	/* ---------- clips: played locally, never streamed ----------
-	   See clips.js for why a clip is never published into the room as a stream.
-	   The engine is shared with the OBS clip source so the two cannot drift. */
-	const Clips = window.StudioClips.create({
-		layer: $("clipLayer"), video: $("clipVideo"), yt: $("clipYt"),
-		stage: $("stage"), busy: $("clipLayer"), busyText: $("clipBusyText"),
-		onReport: function (state, detail) {
-			try {
-				const w = recWindow();
-				if (!w || typeof w.sendChatMessage !== "function") return;
-				w.sendChatMessage("⏺CSTAT " + state + (detail ? " " + detail : ""));
-			} catch (e) {}
-		}
-	});
-	function handleClipControl(raw) { Clips.handle(raw); }
 
 	function handleRecControl(raw) {
 		const m = raw.match(/^\u23FAREC\s+(START|STOP|PING|UPLOAD)(?:\s+(\d+))?(?:\s+(\S+))?/i);

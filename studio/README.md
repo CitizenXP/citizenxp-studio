@@ -198,36 +198,30 @@ will be editing.
 
 ## Playing a video to the room and the stream
 
-Clips live in `studio/clips/` and are served from the same place as the studio itself.
-Add them before a show with `studio/tools/add-clip.ps1`, which re-encodes a local file
-for the web, or simply registers a YouTube link. See
-[studio/clips/README.md](clips/README.md).
+**Overview: Play a video to the room**, then **Add video**. Pick any file your browser
+can play and it joins the broadcast room as its own source, exactly like a guest. The
+guests see and hear it in the call, OBS takes it from an ordinary solo link
+(**Copy OBS link for clips**, which never changes, so it can live in your scene), and
+VDO's own focus mode makes the video large with the faces in a strip. **Play another**
+swaps the file, **End clip** restores the normal layout.
 
-On the day, the **Play a video to the room** panel lists the library. **Preload on
-everyone** pushes the file into each guest's browser cache, **Play** rolls it, and
-Pause, Resume and Stop stay in the control room. **Copy OBS link for clips** gives you
-one browser source to add to your scene permanently: it is black until you roll
-something, then shows the clip full screen.
+There is nothing to prepare, nothing to upload and no size limit.
 
-### Why a clip is never streamed into the call
+### Why it used to stutter, and why it does not now
 
-The obvious design publishes the clip into the room as another WebRTC source. That makes
-the producer's machine encode it and upload one full copy to every guest plus one to
-OBS, on top of the camera it is already sending and the guest streams it is already
-receiving. A home uplink cannot carry that, and WebRTC answers by throttling: the clip
-stutters and every guest's camera degrades at the same moment.
+It was never bandwidth. VDO publishes a file by playing it in a `<video>` element and
+calling `captureStream()` on it, and a browser stops decoding video in a tab that is
+buried, which is exactly what the old pop-out media window became the moment you
+clicked back to the dashboard. The clip source now lives in the dashboard itself, so it
+keeps decoding for as long as that tab is on screen, and the small picture in the panel
+tells you at a glance that it is.
 
-So nothing is streamed. Each participant fetches the clip once from the CDN and plays
-their own copy, while the control room calls out the true position every few seconds to
-keep them in step. Measured in testing: guests and OBS within about 20ms of each other,
-and no additional inbound stream in the room at all.
+Measured with four guests on air: the clip reached every guest with no freezes, their
+cameras were untouched, a full-size viewer such as OBS received the full 1280x720, and
+the producer's total upload for all four copies was about 2 Mbps.
 
-Two things to know:
-
-- **Clips in this folder are public.** Anyone with the URL can download them. For
-  embargoed material use an unlisted YouTube link instead.
-- **100 MB per file**, a GitHub limit. The encoder refuses rather than producing
-  something that cannot be pushed; trim the clip or lower the bitrate.
+The one rule that follows from this: **keep the dashboard tab visible while a clip
+plays.** Put it on a second screen if you have one.
 
 ## Handing recordings back at the end
 

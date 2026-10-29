@@ -56,25 +56,19 @@ Send each guest their invite plus these four lines:
 
 ## Playing a clip
 
-Clips are not streamed through the call. Every guest and OBS plays its own copy, so a
-clip costs the room no bandwidth and nobody sees a stutter.
+1. [ ] **Overview: Play a video to the room**, press **Add video** and pick the file.
+       It joins the broadcast as its own source: the guests see and hear it in the call,
+       and OBS takes it from the clip link you already have in your scene.
+2. [ ] The guests shrink to small boxes with the video large. Uncheck the box in the
+       panel if you would rather leave their layout alone.
+3. [ ] **Play another** swaps in the next file. **End clip** takes everyone back to the
+       usual layout.
+4. [ ] **Leave the dashboard tab on screen while a clip plays.** A browser stops
+       decoding video in a tab that is buried, and that is what makes a clip stutter.
+       The small picture in the panel is your confidence monitor: if it is moving, the
+       room is seeing it.
 
-1. [ ] Once guests are in the green room, press **Preload on everyone** and wait for
-       the Ready count to reach everybody. This is the step that makes playback instant:
-       without it a guest on a weak connection can sit buffering for half a minute.
-       If the line names someone as needing to **return to the studio tab**, say so on
-       the call. A browser will not decode video in a hidden tab, so they would freeze
-       on the first frame. It clears a few seconds after they come back.
-2. [ ] Press **Play** next to the clip. Guests switch to the clip with each other in a
-       strip along the bottom, and your OBS clip source cuts to the same frame.
-3. [ ] **Pause**, **Resume** and **Stop** stay in the control room. Stop returns everyone
-       to the call.
-4. [ ] Tick **Hear it here** if you want the clip in your own headphones. It is muted by
-       default so it cannot double up with what OBS is already playing.
-
-Add clips the day before with `studio/tools/add-clip.ps1`, then deploy.
-then deploy. YouTube links work too and need no upload. A clip that has not been
-deployed does not exist as far as your guests are concerned.
+Nothing to prepare and nothing to upload. Any file your browser can play will do.
 
 ## Wrapping
 
