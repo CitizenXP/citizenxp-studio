@@ -17,8 +17,10 @@ Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
       their recording stops.
 - [ ] **Guest Links** tab: add every guest by name, copy each one their personal invite.
 - [ ] Preload the OBS solo links as browser sources. They sit dark until the guest is live.
-- [ ] **Overview: Play a video to the room**: press **Copy OBS link for clips** and
-      add that as a browser source now too. It stays black until you roll a clip.
+- [ ] **Overview: Screen source**: if you are showing videos or articles this week,
+      press **Rehearse in the green room** once and check it looks and sounds right.
+      Add `screen_<broadcast room>` as a browser source in OBS now; it stays black
+      until you join as a screen.
 - [ ] Install ffmpeg once, so converting the takes afterwards is instant:
       `winget install Gyan.FFmpeg`
 
@@ -54,32 +56,25 @@ Send each guest their invite plus these four lines:
 3. [ ] Confirm the panel says **ARMED**. That is what re-starts a guest who refreshes.
 4. [ ] Go live in OBS.
 
-## Playing a clip
+## Showing a video or an article
 
-Clips are staged on every machine ahead of time and played on your cue, so rolling
-one costs your upload nothing. That is what keeps your connection free for OBS.
+You join the room again as an extra participant whose picture is a window on your
+machine. The guests see it in their call, and OBS gets it as a normal guest feed.
 
-1. [ ] Before the guests arrive, or while they settle in, press **Stage all**. Each
-       clip then shows how many guests hold it.
-2. [ ] When a clip is coming up, press **Stage** on it if you have not already, and
-       wait for the count to reach everybody.
-3. [ ] Cut your OBS scene to the clip source. It is showing the first frame, waiting.
-4. [ ] Press **Play**. It rolls on every guest and in OBS at once, and the guests
-       shrink to small boxes around it.
-5. [ ] **Pause**, **Resume** and **Stop** stay in the control room. Stop returns
-       everyone to the call.
-6. [ ] You can **Stage** the next clip while one is on air without disturbing it.
+1. [ ] In **Overview**, under **Screen source**, set the **Name on screen** if you want
+       something other than "Screen", and check the quality box. The figure beside it
+       is what it will cost your upload with the panel you have on air.
+2. [ ] Press **Join the broadcast as a screen**. A new tab opens.
+3. [ ] Pick the window or tab, and **tick the box that shares its audio**. Miss that
+       and it goes out silent.
+4. [ ] It now appears on the board like a guest. Spotlight it or put it on air exactly
+       as you would a person, and cut your OBS scene to it.
+5. [ ] To change what you are showing, use the share controls in that tab. To finish,
+       stop the share or close the tab.
 
-If the transport line names someone as needing to **return to the studio tab**, say so
-on the call: a browser will not decode video in a hidden tab, so they would freeze on
-the first frame.
-
-### The unplanned case
-
-**Play a file from this computer** streams a file straight into the room, for
-something nobody prepared. It is the one clip path that **does** use your upload,
-about 1 Mbps per guest at the default cap, and the panel states the figure. While you
-are streaming to several platforms at once, stage a clip instead wherever you can.
+Leave that tab open while it runs, but you do not need to be looking at it. It shows
+and plays nothing from the room on purpose, so it cannot feed your own audio back into
+the show.
 
 ## Wrapping
 
@@ -124,7 +119,8 @@ ARMED. They will have two files. Nothing to do live.
 **A guest stops recording and you did not ask them to.** Press **Record** on their row.
 Stopping one guest on purpose is remembered, so nothing restarts them behind your back.
 
-**The clip stalls halfway.** The media tab lost focus. Click back onto it.
+**The screen source is silent.** The share audio box in the browser's dialog was
+not ticked. Stop the share in that tab and pick the window again.
 
 **The whole call goes sideways.** Guests' recordings keep running on their own machines
 regardless of what the connection does. Get the files afterwards; the show is probably

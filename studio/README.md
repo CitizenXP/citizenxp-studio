@@ -196,52 +196,43 @@ will be editing.
 - Closing the tab mid-recording now warns the guest first, but it will still truncate
   the take if they insist.
 
-## Playing a video to the room and the stream
+## Showing a video, an article or anything else on your screen
 
-Two ways, and the first is the one to use on a show day.
+You join the room a second time as a **screen source**: an extra participant whose
+picture is a window you picked instead of a face. Guests see it in their call, the
+dashboard sees it on the board, and OBS receives it as an ordinary guest feed, so you
+lay it out in your scene however you like.
 
-### Staged clips, which cost no upload at all
+In **Overview**, under **Screen source**, press **Join the broadcast as a screen**. A
+new tab opens on VDO.Ninja's own screen-share page. Pick the window or tab, tick the
+box in that dialog that shares its audio, and you are in. **Rehearse in the green
+room** does the same thing into the green room, so you can see how it looks before it
+is in front of anyone.
 
-Clips live in `studio/clips/` and are served from the same place as the studio, so
-every guest and the OBS clip source fetches its own copy. **Stage** downloads a clip
-onto everyone and holds it on the first frame: nothing is shown to the guests, but the
-OBS source is showing that frame, so you can cut your scene to it and see it waiting.
-**Play** rolls it everywhere at once.
+Its stream id is fixed per room, `screen_<room>`, so an OBS browser source pointed at
+it once keeps working week after week.
 
-Measured with four guests on air:
+### What this replaces, and why it is better
 
-| | producer's upload |
-|---|---|
-| Show running, nothing playing | 0 kbps |
-| Clip staged, waiting | 0 kbps |
-| **Clip playing** | **0 kbps** |
-| The same clip streamed from the producer's computer | 3883 kbps |
+The old way was a virtual camera: play the video in a window on your machine, capture
+that window as a fake webcam, and route the sound through your microphone so the room
+and the stream could both hear it. It worked, but the audio paid for it. Anything
+arriving on a microphone input goes through echo cancellation and noise suppression,
+which is exactly wrong for music and soundtracks, and your own voice and the video had
+to share one channel.
 
-Spread between the four guests once rolling: **0.00s**. OBS receives it at the clip's
-own resolution, 1920x1080 for the episode 2 ad set. Staging the next clip while one is
-on air does not disturb it, and the swap when you play it takes about a second.
+The screen source sends the window's own audio, in stereo, with that processing turned
+off (`&sss=1`), and your face and voice stay on your normal feed. Video capture runs at
+30 fps rather than the handful of frames a second that is fine for a face.
 
-Add clips with `studio/tools/add-clip.ps1` and deploy. See
-[studio/clips/README.md](clips/README.md).
+### What it costs
 
-### A file straight from your computer, for the unplanned moment
-
-**Play a file from this computer** publishes the file into the room as its own source,
-no preparation needed. This is the path that **does** use your upload, one copy per
-guest, and the panel states what it will cost before you start. The quality box sets a
-ceiling that is applied per outgoing sender, and OBS is deliberately exempt from it, so
-the audience's copy is never throttled to protect the guests'.
-
-Either way the guests see the video large with each other in a strip, and the OBS clip
-link covers both: one browser source in your scene, added once.
-
-### Why a clip is never published into the call unless you ask for it
-
-VDO publishes a file by playing it in a `<video>` element and calling `captureStream()`
-on it, and a browser stops decoding video in a tab that is buried. That, not bandwidth,
-is what made the old pop-out media window stutter. The streaming path now runs inside
-the dashboard where it keeps decoding, and the staged path avoids the question entirely
-by never sending the video anywhere.
+One copy goes to each guest, so it scales with the panel: at the default 2.5 Mbps and
+four guests on air, roughly 10 Mbps of your upload. The quality box in the panel sets
+the ceiling, and the figure beside it tells you the cost before you start. The tab
+deliberately receives nothing from the room, which keeps the guests from each opening a
+pointless extra copy of their camera to it, and stops the room's audio being captured
+straight back into the share.
 
 ## Handing recordings back at the end
 
