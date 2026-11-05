@@ -19,8 +19,8 @@ Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
 - [ ] Preload the OBS solo links as browser sources. They sit dark until the guest is live.
 - [ ] **Overview: Screen source**: if you are showing videos or articles this week,
       press **Rehearse in the green room** once and check it looks and sounds right.
-      Add `screen_<broadcast room>` as a browser source in OBS now; it stays black
-      until you join as a screen.
+      Press **Copy OBS link** (not Copy share link) and paste it into an OBS browser
+      source now; it stays black until you join as a screen.
 - [ ] Install ffmpeg once, so converting the takes afterwards is instant:
       `winget install Gyan.FFmpeg`
 

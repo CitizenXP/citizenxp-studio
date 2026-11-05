@@ -209,8 +209,15 @@ box in that dialog that shares its audio, and you are in. **Rehearse in the gree
 room** does the same thing into the green room, so you can see how it looks before it
 is in front of anyone.
 
-Its stream id is fixed per room, `screen_<room>`, so an OBS browser source pointed at
-it once keeps working week after week.
+For OBS, press **Copy OBS link** and paste that into a browser source. It is fixed per
+room, so you set the source up once and it keeps working week after week. The source
+sits black until you join as a screen.
+
+Note which button you use. **Copy OBS link** gives you the link that *watches* the
+screen. **Copy share link** gives you the link that *opens* one, and is only for
+sharing from a second computer. Paste the share link into OBS and OBS loads its own
+screen-share page: you get a "Select screen to share" button sitting in your scene
+instead of your screen.
 
 ### What this replaces, and why it is better
 
