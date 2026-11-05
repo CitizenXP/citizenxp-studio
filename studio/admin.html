@@ -1413,6 +1413,9 @@
 			ssfps: 30,
 			bitrate: shareKbps(),
 			hideheader: null,
+			// Nothing arriving here is for a window to read, and anything that renders
+			// is one more thing on screen if this tab is ever the one being shared.
+			chat: 0,
 			tips: 0
 		});
 	}
@@ -1487,7 +1490,13 @@
 		setTimeout(renderRecList, 400);
 	}
 
-	function allGuests() { return lastGreen.concat(lastMain); }
+	// The screen source joins the room as a participant, but it is a window, not a
+	// person: no camera, nothing to record, nothing to ask. Left in here it collected a
+	// recording row nobody could use, and a REC PING every watchdog cycle. Guests never
+	// see those pings because join.html intercepts them, but the screen source runs on
+	// the raw VDO page, which has no such filter and renders each one as visible chat.
+	function isScreenSource(sid) { return String(sid).indexOf("screen_") === 0; }
+	function allGuests() { return lastGreen.concat(lastMain).filter(g => !isScreenSource(g.sid)); }
 	function anyRecording() { return allGuests().some(g => LOCALREC[g.sid] === "on"); }
 
 	// ARMED means 'this session is being recorded', not 'these particular guests are'.
@@ -1863,7 +1872,8 @@
 
 	const autoRecDone = new Set();
 	const autoRecNext = {}; // sid -> earliest time we may attempt this guest again
-	function maybeAutoRecord(main) {
+	function maybeAutoRecord(onAir) {
+		const main = onAir.filter(g => !isScreenSource(g.sid)); // a window cannot record itself
 		const cur = new Set(main.map(g => g.sid));
 		[...autoRecDone].forEach(sid => { if (!cur.has(sid)) autoRecDone.delete(sid); });
 		if (!EV.autoRec) return;
