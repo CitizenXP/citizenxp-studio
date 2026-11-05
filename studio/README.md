@@ -204,8 +204,17 @@ dashboard sees it on the board, and OBS receives it as an ordinary guest feed, s
 lay it out in your scene however you like.
 
 In **Overview**, under **Screen source**, press **Join the broadcast as a screen**. A
-new tab opens on VDO.Ninja's own screen-share page. Pick the window or tab, tick the
-box in that dialog that shares its audio, and you are in. **Rehearse in the green
+new tab opens on VDO.Ninja's own screen-share page. Pick the **tab** you want to show,
+tick the box in that dialog that shares its audio, and you are in.
+
+Pick a tab, not your whole screen. Chrome takes only that one tab's audio, so your
+control room monitoring stays out of it. Share the entire screen instead and you send
+the whole system mix: your guests hear themselves coming back delayed, with no echo
+cancellation to catch it, because this source deliberately runs with the microphone
+processing off. They would also be looking at your dashboard. Anything can be a tab,
+including a video file on your PC, which Chrome will play if you drag it in. Sharing a
+window is the quiet trap: Chrome offers no audio for a window at all, so it goes out
+silent. **Rehearse in the green
 room** does the same thing into the green room, so you can see how it looks before it
 is in front of anyone.
 

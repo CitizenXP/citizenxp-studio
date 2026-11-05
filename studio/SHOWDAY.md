@@ -65,8 +65,10 @@ machine. The guests see it in their call, and OBS gets it as a normal guest feed
        something other than "Screen", and check the quality box. The figure beside it
        is what it will cost your upload with the panel you have on air.
 2. [ ] Press **Join the broadcast as a screen**. A new tab opens.
-3. [ ] Pick the window or tab, and **tick the box that shares its audio**. Miss that
-       and it goes out silent.
+3. [ ] Pick the **tab** you want to show, and **tick the box that shares its audio**.
+       Miss the box and it goes out silent. Pick the whole screen instead of a tab and
+       you send your control room monitoring with it, so the guests hear themselves
+       delayed. A video on your PC counts as a tab: drag the file into Chrome.
 4. [ ] It now appears on the board like a guest. Spotlight it or put it on air exactly
        as you would a person, and cut your OBS scene to it.
 5. [ ] To change what you are showing, use the share controls in that tab. To finish,
@@ -119,8 +121,12 @@ ARMED. They will have two files. Nothing to do live.
 **A guest stops recording and you did not ask them to.** Press **Record** on their row.
 Stopping one guest on purpose is remembered, so nothing restarts them behind your back.
 
-**The screen source is silent.** The share audio box in the browser's dialog was
-not ticked. Stop the share in that tab and pick the window again.
+**The screen source is silent.** Either the share audio box in the browser's dialog
+was not ticked, or you shared a window, which Chrome gives no audio for. Stop the
+share in that tab and pick a tab instead.
+
+**Guests say they can hear themselves echoing.** You shared your whole screen, so your
+control room monitoring is going out with it. Stop the share and pick just the tab.
 
 **The whole call goes sideways.** Guests' recordings keep running on their own machines
 regardless of what the connection does. Get the files afterwards; the show is probably
