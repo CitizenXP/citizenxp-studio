@@ -43,8 +43,14 @@ const Studio = (() => {
 	function sanitizeId(str) {
 		return (str || "").replace(/[^a-zA-Z0-9_]/g, "");
 	}
+	// "dir_" and "screen_" are reserved stream-id prefixes: the control room pushes
+	// dir_<room>_<rand> and the producer screen source pushes screen_<room>, and both the
+	// guest page and the dashboard hide anything carrying those prefixes. A guest whose
+	// name happened to slug into one would be invisible to the whole room and absent from
+	// the board, with nothing to explain why, so move them clear of it.
 	function slugName(name) {
-		return sanitizeId((name || "guest").trim().replace(/\s+/g, "_")).slice(0, 20) || "guest";
+		const s = sanitizeId((name || "guest").trim().replace(/\s+/g, "_")).slice(0, 20) || "guest";
+		return /^(dir|screen)_/i.test(s) ? "g_" + s : s;
 	}
 
 	/* ---------- URL building ---------- */

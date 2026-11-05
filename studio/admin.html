@@ -914,7 +914,13 @@
 	function rosterSid(name) { return Studio.slugName(name); }
 	function personalInvite(name) { return buildInvite({ sid: rosterSid(name), gn: name }); }
 	function obsExtras(p) {
-		if (EV.proAudio) p.proaudio = null;    // must match the guest side for 256kbps stereo passthrough
+		// Pro audio has to be asked for by BOTH ends, and the value matters here.
+		// A bare &proaudio resolves to VDO's guest mode (stereo=5), which its own source
+		// comments as "no stereo in, no high bitrate in": right for a guest, who does not
+		// need a boosted feed of everyone else, and exactly wrong for OBS, which exists
+		// only to receive. &proaudio=1 is "both", so the full stereo feed reaches the
+		// stream and the recording.
+		if (EV.proAudio) p.proaudio = 1;
 		if (EV.captions) p.closedcaptions = null;
 		if (EV.waitMsg) p.waitmessage = EV.waitMsg;
 		if (EV.waitImg) p.waitimage = EV.waitImg;
