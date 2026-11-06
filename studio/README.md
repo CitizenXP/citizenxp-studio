@@ -112,6 +112,30 @@ marked **Control Room**. Turn on *Private chat* in Settings and guests' messages
 to producers, and the panel says so, so nobody types something awkward assuming privacy that
 isn't there.
 
+### Guests on a phone
+
+A phone works. The join page is built for a narrow screen, and a phone guest joins, waits,
+gets admitted and goes live exactly like anyone else. What a phone cannot do is record the
+local master copy, so a phone guest costs you their isolated track. Use one for a caller or
+a late addition, not for a main panellist.
+
+The thing that actually stops phone guests is the browser they arrive in. Tapping a link
+inside Instagram, Facebook, Messenger, LINE or TikTok opens it in that app's own built-in
+browser, and those usually refuse to hand a website the camera. The guest sees a loading
+screen forever. You see nothing at all, because they never reach the room, so there is no
+card on the board and nothing to tell you a person is stuck.
+
+The join page handles both halves of that. If it recognises one of those built-in browsers
+it says so in the lobby, before the guest wastes an attempt, and tells them to reopen the
+link in Safari or Chrome. If the camera is refused anyway, or the guest simply never gets
+past the camera step, it replaces the browser's own error with instructions written for a
+phone: where the permission control actually is on iOS and on Android, what else might be
+holding the camera, and a Reload and try again button.
+
+It cannot tell you any of this. A guest stuck at that point has no connection to the room,
+so there is no channel to report over. If someone is expected and no card appears, assume
+they are stuck on their camera and message them.
+
 ## Recording (the Riverside-style part)
 
 There are **two** recordings, and the difference matters.

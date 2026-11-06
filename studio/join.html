@@ -249,6 +249,20 @@
 	#chatDot.show { display: block; }
 
 	/* the helper text would run into the centred status pill long before this gets tight */
+	/* Help for a guest whose camera never starts. It sits over the VDO frame because
+	   that frame is where they are stuck, and VDO's own message is a browser error, not
+	   an instruction a guest can act on from a phone. */
+	#camHelp { position: absolute; inset: 0; z-index: 7; display: flex; align-items: center;
+		justify-content: center; padding: 18px; background: rgba(8, 12, 20, 0.93); overflow-y: auto; }
+	#camHelp.hidden { display: none; }
+	.camHelpCard { max-width: 460px; width: 100%; border: 1px solid var(--line); border-radius: var(--r-sm);
+		background: var(--panel, #121826); padding: 20px 22px; line-height: 1.55; }
+	.camHelpCard h3 { margin: 0 0 10px 0; font-size: 1.04rem; display: flex; align-items: center; gap: 9px; }
+	.camHelpCard p { margin: 0 0 12px 0; color: var(--text-dim); font-size: 0.86rem; }
+	.camHelpCard ul { margin: 0 0 14px 0; padding-left: 20px; color: var(--text-dim); font-size: 0.86rem; }
+	.camHelpCard li { margin-bottom: 8px; }
+	.camHelpCard .camHelpFoot { font-size: 0.8rem; color: var(--text-faint, #8893a7); }
+
 	@media (max-width: 900px) { #statusMsg { display: none; } }
 	@media (max-width: 620px) {
 		#chatPanel { width: 100%; max-width: 100%; }
@@ -278,6 +292,7 @@
 		</div>
 		<div id="recNote" class="small" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); background: rgba(255,255,255,0.03); color: var(--text-dim); line-height: 1.5;"><i class="las la-record-vinyl"></i> This show is recorded on your own computer for quality. Your browser may ask where to save the file; anywhere is fine, and you will send it to the producer afterwards.</div>
 			<div id="paNote" class="small hidden" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid rgba(var(--accent-rgb), 0.35); border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); line-height: 1.5;"><i class="las la-headphones"></i> This show uses studio-quality audio. Please wear headphones to avoid echo.</div>
+		<div id="iabNote" class="small hidden" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid rgba(255,180,90,0.42); border-radius: var(--r-sm); background: rgba(255,180,90,0.09); color: #ffcf96; line-height: 1.5;"><i class="las la-exclamation-triangle"></i> <b>Open this in your normal browser first.</b> You are in <span id="iabName">an app's built-in browser</span>, which usually will not let a website use your camera. Tap the <b>&hellip;</b> or share button on this screen and choose <b>Open in <span id="iabTarget">Safari</span></b>, then use this link again.</div>
 		<div class="field">
 			<label for="guestName">Your name (shown on screen)</label>
 			<input type="text" id="guestName" maxlength="40" placeholder="e.g. Jane Smith" autocomplete="name" />
@@ -302,6 +317,16 @@
 	</div>
 	<div id="stage">
 		<iframe id="vdo" class="vdoframe" allow="autoplay; camera; microphone; display-capture; fullscreen; clipboard-write"></iframe>
+		<div id="camHelp" class="hidden">
+			<div class="camHelpCard">
+				<h3><i class="las la-video-slash"></i> <span id="camHelpTitle">Your camera has not started yet</span></h3>
+				<p id="camHelpWhy">Your browser has not given this page a camera or microphone, so the show team cannot see you yet.</p>
+				<ul id="camHelpSteps"></ul>
+				<p class="camHelpFoot">Once it works you will land in the waiting room and the team will see you. Nothing is sent until then.</p>
+				<button class="btn primary" id="camHelpRetry">Reload and try again</button>
+				<button class="btn" id="camHelpClose">Hide this</button>
+			</div>
+		</div>
 		<div id="waitOverlay" class="hidden" style="opacity:0">
 			<div class="sunrise"></div>
 			<h2>You're in the waiting room</h2>
@@ -563,6 +588,7 @@
 		$("call").classList.add("prestart"); // dock and chat appear once they press START
 		setPill("waiting", "CONNECTING", "Choose your camera & mic, then press START");
 		state = "connecting";
+		connectStartedAt = Date.now();
 		pollTimer = setInterval(pollState, 1200);
 	}
 
@@ -668,6 +694,88 @@
 	/* ---------- state detection (same-origin) ----------
 	   The control room's director connections use stream IDs of the form
 	   "dir_<roomname>_<rand>", so the room we're in = the director we're connected to. */
+	/* ---------- when the camera step never completes ----------
+	   A guest who cannot grant a camera is invisible: they are not in the room, so there
+	   is no channel to tell the producer, and nobody appears in the green room. All we
+	   can do is make sure the guest in front of the phone is told something they can act
+	   on. VDO raises a browser error, which is accurate and useless to a guest. */
+	const IABS = [
+		[/FBAN|FBAV|FB_IAB/i, "the Facebook app"],
+		[/Instagram/i, "the Instagram app"],
+		[/Messenger/i, "the Messenger app"],
+		[/\bLine\//i, "the LINE app"],
+		[/Snapchat/i, "the Snapchat app"],
+		[/LinkedInApp/i, "the LinkedIn app"],
+		[/BytedanceWebview|musical_ly|TikTok/i, "the TikTok app"],
+		[/Pinterest/i, "the Pinterest app"],
+		[/\bGSA\//i, "the Google app"]
+	];
+	const UA = navigator.userAgent || "";
+	const isIOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+	const isAndroid = /Android/i.test(UA);
+	const isPhone = isIOS || isAndroid;
+	function inAppBrowser() {
+		for (const [re, name] of IABS) if (re.test(UA)) return name;
+		return null;
+	}
+
+	// Shown in the lobby, before they spend a join attempt finding out the hard way.
+	(function warnAboutInAppBrowser() {
+		const which = inAppBrowser();
+		if (!which) return;
+		$("iabName").textContent = which;
+		$("iabTarget").textContent = isIOS ? "Safari" : "Chrome";
+		$("iabNote").classList.remove("hidden");
+	})();
+
+	let connectStartedAt = 0, camHelpShown = false, camHelpDismissed = false;
+
+	function camSteps(denied) {
+		const steps = [];
+		if (denied) {
+			if (isIOS) steps.push("In Safari, tap <b>aA</b> at the left of the address bar, choose <b>Website Settings</b>, and set <b>Camera</b> and <b>Microphone</b> to <b>Allow</b>.");
+			else if (isAndroid) steps.push("Tap the <b>lock</b> icon at the left of the address bar, choose <b>Permissions</b>, and allow <b>Camera</b> and <b>Microphone</b>.");
+			else steps.push("Click the <b>camera</b> icon at the right of the address bar and allow access.");
+			steps.push("Then press <b>Reload and try again</b> below.");
+		} else {
+			steps.push("Behind this message there is a panel to choose your camera and microphone, then a large <b>START</b> button. You have to press START before anyone can see you.");
+			steps.push("If your browser asked permission for the camera, answer <b>Allow</b>.");
+		}
+		if (inAppBrowser()) steps.push("You opened this inside " + inAppBrowser() + ". Those built-in browsers usually block cameras. Tap <b>&hellip;</b> or the share button and choose <b>Open in " + (isIOS ? "Safari" : "Chrome") + "</b>.");
+		else if (isPhone) steps.push("If you opened this from a message inside another app, open it in " + (isIOS ? "Safari" : "Chrome") + " instead. Built-in browsers inside apps usually block cameras.");
+		steps.push("Close anything else using the camera: FaceTime, Zoom, Teams, or the Camera app itself.");
+		if (isIOS) steps.push("If it still refuses, check <b>Settings &rsaquo; Safari &rsaquo; Camera</b> is set to Ask or Allow.");
+		return steps;
+	}
+
+	function showCamHelp(denied) {
+		if (camHelpShown || camHelpDismissed) return;
+		camHelpShown = true;
+		$("camHelpTitle").textContent = denied ? "Your browser blocked the camera" : "Your camera has not started yet";
+		$("camHelpWhy").textContent = denied
+			? "This page was refused access to your camera and microphone, so the show team cannot see or hear you and you are not in the room yet."
+			: "You are still on the camera setup step, so the show team cannot see you yet. Here is how to get past it.";
+		$("camHelpSteps").innerHTML = camSteps(denied).map(s => "<li>" + s + "</li>").join("");
+		$("camHelp").classList.remove("hidden");
+	}
+	function hideCamHelp() { camHelpShown = false; $("camHelp").classList.add("hidden"); }
+	$("camHelpClose").addEventListener("click", () => { camHelpDismissed = true; hideCamHelp(); });
+	$("camHelpRetry").addEventListener("click", () => location.reload());
+
+	// VDO's permission error is a dismissible modal inside the frame. Reading it is the
+	// precise signal; the timer below is only for everything else that can stall here.
+	function camStalled(s) {
+		if (started || (s && s.seeding)) { if (camHelpShown) hideCamHelp(); return; }
+		let denied = false;
+		try {
+			const d = iframe.contentWindow.document;
+			const txt = (d.body && d.body.innerText) || "";
+			denied = /permission\s+access\s+to\s+the\s+camera|denied|NotAllowedError|NotFoundError|no camera/i.test(txt);
+		} catch (e) {}
+		if (denied) { showCamHelp(true); return; }
+		if (connectStartedAt && Date.now() - connectStartedAt > 45000) showCamHelp(false);
+	}
+
 	function pollState() {
 		let s = null;
 		try { s = iframe.contentWindow && iframe.contentWindow.session; } catch (e) { return; } // cross-origin: rely on events only
@@ -688,7 +796,7 @@
 			if (am && /wait until the director/i.test(am.textContent || "")) am.style.display = "none";
 		} catch (e) {}
 		try {
-			if (state === "connecting" && !started) return; // still on device-pick screen
+			if (state === "connecting" && !started) { camStalled(s); return; } // still on device-pick screen
 			if (s.queue) { applyState("waiting"); return; }
 			let dirSid = "";
 			const du = s.directorUUID;

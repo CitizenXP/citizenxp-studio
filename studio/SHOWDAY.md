@@ -26,9 +26,14 @@ Control room: `https://citizenxp.github.io/citizenxp-studio/studio/admin.html`
 
 Send each guest their invite plus these four lines:
 
-> - Use **Chrome or Edge on a computer**. Not a phone, not Safari. A phone can join
->   and go live, but it cannot record your master copy, and a laptop screen is the
->   only way to see the rest of the panel properly.
+> - Use **Chrome or Edge on a computer**. A phone can join and go live, but it cannot
+>   record your master copy, and a laptop screen is the only way to see the rest of
+>   the panel properly.
+> - **On a phone, open the link in Safari (iPhone) or Chrome (Android) itself.** If you
+>   tap the link inside Instagram, Facebook, Messenger, LINE or TikTok, it opens in that
+>   app's own browser, which usually refuses to give a website the camera. You then sit
+>   on a loading screen and never arrive, and the producer sees nothing. Tap the share
+>   or three dots button and choose "Open in Safari" or "Open in Chrome" first.
 > - Wear **headphones**.
 > - Keep **10 GB free**. Your computer records the master copy.
 > - In Chrome, turn **off** Settings → Downloads → *Ask where to save each file before
@@ -127,6 +132,14 @@ share in that tab and pick a tab instead.
 
 **Guests say they can hear themselves echoing.** You shared your whole screen, so your
 control room monitoring is going out with it. Stop the share and pick just the tab.
+
+**A guest says they clicked the link but never appeared on your board.** They are stuck
+before the room, so nothing reaches you: there is no card to miss. Almost always the
+camera permission. Ask them what is on screen. The join page now detects this and shows
+them the steps, with a Reload and try again button. The usual cause on a phone is that
+the link was opened inside another app's browser; the fix is to open it in Safari or
+Chrome. Second most likely: they never pressed the large START button after picking
+their camera.
 
 **The whole call goes sideways.** Guests' recordings keep running on their own machines
 regardless of what the connection does. Get the files afterwards; the show is probably
