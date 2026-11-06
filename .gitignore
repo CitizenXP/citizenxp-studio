@@ -10,3 +10,6 @@ cf/
 wrangler.toml
 package.json
 docs.md
+
+# Show footage. Kept on your machine, never in the public repo.
+studio/clips/
