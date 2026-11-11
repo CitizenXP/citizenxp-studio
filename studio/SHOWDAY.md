@@ -35,9 +35,11 @@ Send each guest their invite plus these four lines:
 >   on a loading screen and never arrive, and the producer sees nothing. Tap the share
 >   or three dots button and choose "Open in Safari" or "Open in Chrome" first.
 > - Wear **headphones**.
-> - Keep **10 GB free**. Your computer records the master copy.
-> - In Chrome, turn **off** Settings → Downloads → *Ask where to save each file before
->   downloading*. Otherwise Chrome interrupts you mid-show to ask.
+> - Keep **20 GB free**. Your computer records the master copy, and it needs room for
+>   both the recording and the copy you save at the end.
+> - At the end you will get a **Save my recording** button. Press it, pick a folder, and
+>   send the file over. That is the only thing you have to do about recording, and
+>   nothing will interrupt you before then.
 
 ## Sound check (30 minutes before)
 
@@ -132,6 +134,15 @@ share in that tab and pick a tab instead.
 
 **Guests say they can hear themselves echoing.** You shared your whole screen, so your
 control room monitoring is going out with it. Stop the share and pick just the tab.
+
+**A guest's recording says it stopped on its own.** Almost always their disk filling up.
+The guest's screen says which. They can clear space and you can start them again; what is
+already recorded is safe on their machine.
+
+**A guest crashed or closed the tab mid-show.** Their recording is still on their
+computer up to the last second, because it is written continuously rather than saved at
+the end. Send them their link again: the join page spots the unsaved recording and offers
+it back with a Save button. Do this before they close the browser for the night.
 
 **A guest says they clicked the link but never appeared on your board.** They are stuck
 before the room, so nothing reaches you: there is no card to miss. Almost always the

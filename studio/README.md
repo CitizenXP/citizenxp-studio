@@ -145,7 +145,7 @@ There are **two** recordings, and the difference matters.
 | Where it runs | the **guest's** computer | **your** computer |
 | What it captures | their raw camera and mic | the stream after it crossed the internet |
 | Affected by a bad connection | **no** | yes: artefacts and dropped frames are baked in |
-| Where the file ends up | their Downloads folder | your Downloads folder |
+| Where the file ends up | saved on their computer, one click at the end | your Downloads folder |
 | How you start it | **Studio recordings** panel on the Overview | the small record button on a guest card |
 
 Record both. The studio recording is your master; the safety copy is what saves you
@@ -163,8 +163,29 @@ when a guest closes their laptop before sending you anything.
 4. The session stays **ARMED** until you press stop. Anyone who joins late starts
    recording automatically, and so does anyone whose recording dies, which is what
    happens when a guest refreshes the page mid-show. You do not have to notice.
-5. Press **Stop recording everyone** at the end. Each guest is told the file is in
-   their Downloads folder and asked to send it to you.
+5. Press **Stop recording everyone** at the end. Each guest gets a **Save my
+   recording** button, picks where to put it, and is then shown your upload link.
+   That click is the only thing a guest ever has to do about recording.
+
+### Where the recording actually lives while it runs
+
+Not in the Downloads folder, and not in memory. It is written continuously into the
+browser's own private storage through a worker, because that is the only writer a web
+page has that commits as it goes. Everything else, including the obvious choice of
+asking the guest for a folder up front, buffers the whole file and writes it only when
+the recording is closed.
+
+That difference is the whole point. Measured rather than assumed: with the ordinary
+writer the file on disk stayed at zero bytes through write after write. With this one it
+grew the entire time. So if a guest's browser crashes two hours into a show, the
+recording is on their machine up to the last second or so, instead of gone.
+
+A cut-off recording is still a usable video. WebM is Matroska, the same container that
+makes a crashed OBS recording survive, and a take read while it was still being written,
+never closed, played back at full resolution with its audio intact.
+
+If a guest rejoins and a recording from a crashed session is still sitting unsaved, the
+join page offers it back to them instead of letting it be quietly evicted.
 
 ### Getting the files into your editor
 
@@ -175,6 +196,12 @@ hours. Drop the files in a folder and run:
 ```powershell
 .\studio\tools\convert-recordings.ps1 -Path C:\path\to\the\webm\files
 ```
+
+Recordings are VP8 video in a WebM container. That is deliberate: H.264 reports itself
+as supported on machines whose hardware encoder then throws partway through a take,
+which looks exactly like a recording that keeps restarting itself. It cost a show's
+masters once. The conversion below re-encodes rather than stream copies, so it takes
+real time; run it while you make coffee.
 
 That writes H.264 + AAC MP4s into a `converted` subfolder, which Premiere, Resolve and
 Final Cut all open directly. **Convert before editing even if your editor will open a
@@ -207,11 +234,10 @@ will be editing.
   before they wander off.
 - **A guest who refreshes produces two files**, one per side of the refresh. Both are
   good; join them in your editor.
-- **Tell guests to switch off "Ask where to save each file before downloading"** in
-  Chrome (Settings > Downloads). The recording is written through a normal browser
-  download, so if that setting is on, Chrome interrupts them with a save dialog. No web
-  page can turn it off for them: it is a deliberate browser protection. With it off the
-  file lands in Downloads silently. One take produces exactly one file and one prompt.
+- **Nothing interrupts a guest mid-show any more.** The recording does not go through
+  a browser download, so Chrome's "Ask where to save each file" setting no longer
+  matters and there is no download bar. The guest is asked exactly once, at the end,
+  when they press Save my recording.
 - **Chrome or Edge on a computer.** Safari and iOS recording is unreliable, and the
   panel will say *Cannot record* rather than pretending. Check this at the sound check,
   not at the top of the show: the **Re-check** button asks every guest to re-report.
@@ -280,9 +306,9 @@ Set an **Upload link** in Settings before the show. A Dropbox File Request works
 because guests can upload without an account; a Google Drive folder usually forces them
 to sign in.
 
-When you press **Stop recording everyone**, each guest gets a note telling them the file
-is in their Downloads folder, plus an **Upload your recording** button pointing at that
-link. It stays on screen rather than timing out, because this is the last thing they need
+When you press **Stop recording everyone**, each guest gets a **Save my recording**
+button that writes the file wherever they choose, showing progress as it copies, and
+then an **Upload it here** button pointing at your link. It stays on screen rather than timing out, because this is the last thing they need
 to do and the only step with no undo. **Send upload link** in the recordings panel shows
 it again to anyone who missed it.
 

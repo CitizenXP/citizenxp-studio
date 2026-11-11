@@ -389,6 +389,7 @@
 <div id="liveFlash"><div>&#128308; YOU'RE LIVE</div></div>
 
 <script src="common.js"></script>
+<script src="recorder.js"></script>
 <script>
 "use strict";
 (() => {
@@ -590,6 +591,10 @@
 		state = "connecting";
 		connectStartedAt = Date.now();
 		pollTimer = setInterval(pollState, 1200);
+		// Held back a few seconds so it does not land on top of the camera setup. If a
+		// previous take is still sitting unsaved on this machine, now is the moment they
+		// can still do something about it.
+		setTimeout(offerLeftoverRecording, 8000);
 	}
 
 	/* ---------- hide VDO's own control bar; we provide our own ---------- */
@@ -922,8 +927,85 @@
 	}
 	function recIsRunning(w) { return recState(w) === "on"; }
 
+	/* ---------- which recorder is driving ----------
+	   Ours when the browser can run it, VDO's when it cannot. Ours writes through a
+	   worker into browser storage, the only writer a page has that commits as it goes,
+	   so a crash costs the last second rather than the whole episode. VDO's path goes
+	   through StreamSaver, which can fail outright and puts the browser's download UI in
+	   the middle of a live show.
+
+	   The control room cannot tell the two apart: the same START, STOP and PING tokens
+	   drive both and the same STAT answers come back, so admin.html needs no idea this
+	   choice exists. */
+	let recEngine = null; // "studio" | "vdo", decided once and then kept for the session
+
+	function guestStream(w) {
+		try {
+			const st = w && w.session && w.session.videoElement && w.session.videoElement.srcObject;
+			return (st && st.getTracks && st.getTracks().length) ? st : null;
+		} catch (e) { return null; }
+	}
+	function pickEngine(w) {
+		if (recEngine) return recEngine;
+		if (typeof StudioRec !== "undefined" && StudioRec.supported() && guestStream(w)) recEngine = "studio";
+		else if (guestStream(w)) recEngine = "vdo";
+		return recEngine; // null while the camera is still coming up: decide later
+	}
+	// "stopping" still counts as rolling: the last writes have not landed yet, and
+	// telling the board "off" early invites it to start a second take on top.
+	function studioState() {
+		const s = StudioRec.state();
+		return (s === "on" || s === "starting" || s === "stopping") ? "on" : "off";
+	}
+
+	async function setLocalRecStudio(on, kbps, w) {
+		recWanted = !!on;
+		try {
+			if (on && studioState() === "off") {
+				const stream = guestStream(w);
+				if (!stream) { recReport("fail", "no camera yet"); return; }
+				// Browser storage is quota limited, so check there is somewhere to put the
+				// show before starting one. Running out an hour in is the failure that
+				// looks like everything worked until you go to collect the file.
+				const q = await StudioRec.quota();
+				const room = StudioRec.minutesAt(q.freeBytes, kbps || 8000);
+				if (room < 20) {
+					recReport("fail", "not enough free space on this computer");
+					showRecSaved("There is not enough free space on this computer to record. " +
+						"Clear some space and tell the producer.", 0);
+					return;
+				}
+				StudioRec.persist(); // ask the browser not to evict it; fine if it says no
+				await StudioRec.start(stream, { kbps: kbps || 8000, label: $("guestName").value || EV.gn });
+				recStartedAt = Date.now();
+				recOn = true;
+				renderRecPill();
+				recReport("on");
+				showRecSaved(room < 90
+					? "Recording. There is room for about " + room + " more minutes on this computer."
+					: "Recording. Nothing for you to do: it is saving here, and you will be asked " +
+					  "to save and send it when the show ends.", 10000);
+			} else if (!on) {
+				const done = await StudioRec.stop();
+				recOn = false;
+				renderRecPill();
+				recReport("off");
+				if (done && done.name) offerSave(done.name, done.size);
+				else showRecSaved("Recording stopped.", 8000);
+			} else {
+				recOn = studioState() !== "off";
+				recReport(recOn ? "on" : "off");
+			}
+		} catch (e) {
+			recOn = false;
+			renderRecPill();
+			recReport("fail", (e && e.message) ? String(e.message).slice(0, 60) : "recorder error");
+		}
+	}
+
 	function setLocalRec(on, kbps) {
 		const w = recWindow();
+		if (pickEngine(w) === "studio") { setLocalRecStudio(on, kbps, w); return; }
 		const why = recSupported(w);
 		if (why) { recReport("fail", why); return; }
 		recWanted = !!on; // the producer's instruction, remembered and then enforced below
@@ -1029,6 +1111,81 @@
 		el.classList.add("show");
 	}
 
+	function prettySize(bytes) {
+		if (!bytes) return "";
+		return bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB" : Math.round(bytes / 1e6) + " MB";
+	}
+
+	/* The recording sits in browser storage, which the guest cannot open a file manager
+	   on. Moving it onto their disk needs a click, because no browser will open a save
+	   dialog without one, so this is the one thing we ever ask them to do.
+
+	   recovered: this take outlived the tab that made it. Say so, because a guest who
+	   thinks they already sent this file will close the tab and lose it for good. */
+	function offerSave(name, size, recovered) {
+		const el = $("recSaved");
+		clearTimeout(recSavedTimer);
+		el.textContent = "";
+		const note = document.createElement("div");
+		const sz = prettySize(size);
+		note.textContent = recovered
+			? "A recording from earlier is still on this computer" + (sz ? " (" + sz + ")" : "") +
+			  " and has not been saved yet."
+			: "Your recording is ready" + (sz ? ", " + sz : "") + ". Save it, then send it to the producer.";
+		el.appendChild(note);
+
+		const btn = document.createElement("a");
+		btn.className = "uplink";
+		btn.href = "#";
+		btn.textContent = "Save my recording";
+		let busy = false;
+		btn.addEventListener("click", async ev => {
+			ev.preventDefault();
+			if (busy) return;
+			busy = true;
+			const was = btn.textContent;
+			btn.textContent = "Choose where to save it";
+			try {
+				await StudioRec.saveToDisk(name, (doneBytes, total) => {
+					btn.textContent = "Saving " + Math.min(100, Math.round(doneBytes / total * 100)) + "%";
+				});
+				btn.textContent = "Saved";
+				note.textContent = "Saved to your computer. Now send it to the producer.";
+				// Only let go of our copy once theirs is actually written.
+				StudioRec.discard(name);
+				if (uploadUrl) {
+					const a = document.createElement("a");
+					a.className = "uplink";
+					a.href = uploadUrl;
+					a.target = "_blank";
+					a.rel = "noopener";
+					a.textContent = "Upload it here";
+					el.appendChild(a);
+				}
+			} catch (e) {
+				// Cancelling the save dialog is a decision, not a fault, so just reset.
+				btn.textContent = was;
+				if (e && e.name !== "AbortError") note.textContent = "That did not save: " +
+					String(e.message || e).slice(0, 80) + ". Try again.";
+			} finally { busy = false; }
+		});
+		el.appendChild(btn);
+		el.classList.add("show");
+	}
+
+	// A take that outlived its tab. It is still here precisely because the writer commits
+	// as it goes, so offer it back rather than leaving it to be evicted silently.
+	async function offerLeftoverRecording() {
+		try {
+			if (typeof StudioRec === "undefined" || !StudioRec.supported()) return;
+			const files = await StudioRec.listSaved();
+			if (!files.length) return;
+			const f = files[0];
+			if (!f.size) { StudioRec.discard(f.name); return; }  // nothing ever written
+			offerSave(f.name, f.size, true);
+		} catch (e) {}
+	}
+
 	// tell the control room what actually happened, so its board shows truth
 	function recReport(state, detail) {
 		try {
@@ -1051,6 +1208,13 @@
 		else if (cmd === "STOP") setLocalRec(false);
 		else { // PING: the board is asking whether we are actually rolling
 			const w = recWindow();
+			if (recEngine === "studio") {
+				recOn = studioState() === "on";
+				renderRecPill();
+				recReport(recOn ? "on" : (StudioRec.error() ? "fail" : "off"),
+					recOn ? "" : (StudioRec.error() || "").slice(0, 60));
+				return;
+			}
 			const state = w ? recState(w) : "off";
 			// Answer "on" while VDO is rebuilding a take it lost. It is about to be
 			// rolling again on its own, and calling that gap "off" is an invitation for
@@ -1079,6 +1243,22 @@
 	setInterval(() => {
 		const w = recWindow();
 		if (!w) return;
+
+		// Our own recorder has no self-restart to fight, so this is only here to keep the
+		// pill and the board honest if a take dies on its own: a failed write, a camera
+		// unplugged, storage filling up mid show.
+		if (recEngine === "studio") {
+			const running = studioState() === "on";
+			if (running !== recOn) {
+				recOn = running;
+				renderRecPill();
+				const err = StudioRec.error();
+				recReport(running ? "on" : (err ? "fail" : "off"), err ? String(err).slice(0, 60) : "");
+				if (!running && err) showRecSaved("The recording stopped: " + String(err).slice(0, 90), 0);
+			}
+			return;
+		}
+
 		const state = recState(w);
 
 		// A take that VDO lost brings itself back about half a second later, from a
