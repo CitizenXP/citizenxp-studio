@@ -115,13 +115,22 @@ const StudioRec = (() => {
 	}
 
 	/* ---------- recording ---------- */
-	function fileName(label) {
+	function fileName(label, ext) {
 		const d = new Date();
 		const p = n => String(n).padStart(2, "0");
 		const stamp = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
 			"_" + p(d.getHours()) + p(d.getMinutes());
 		const who = (label || "guest").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 32) || "guest";
-		return who + "_" + stamp + ".webm";
+		return who + "_" + stamp + (ext || ".webm");
+	}
+
+	// Name the file after what the recorder is actually producing, not what we asked
+	// for. Safari ignores a webm request and hands back MP4, so a guest on an iPad would
+	// otherwise send a .webm file that is really an .mp4 and break the conversion script.
+	function extensionFor(type) {
+		if (/mp4|mpeg-4/i.test(type)) return ".mp4";
+		if (/matroska|x-matroska/i.test(type)) return ".mkv";
+		return ".webm";
 	}
 
 	async function start(stream, opts) {
@@ -130,16 +139,22 @@ const StudioRec = (() => {
 		if (!stream || !stream.getTracks().length) throw new Error("no camera stream to record");
 		set("starting");
 		lastError = null;
-		const name = fileName(opts.label);
-		await ask("open", { name });
 
 		const type = mime();
 		const options = { videoBitsPerSecond: (opts.kbps || 8000) * 1000, audioBitsPerSecond: 192000 };
 		if (type) options.mimeType = type;
-		// Audio only takes still go through the same path; the caller hands us a stream
-		// with no video track and MediaRecorder works it out.
+		// Built before the file is opened, because only the live recorder can say what
+		// container it settled on. Audio only takes come through here too: the caller
+		// hands us a stream with no video track and MediaRecorder works it out.
 		try { mr = new MediaRecorder(stream, options); }
 		catch (e) { mr = new MediaRecorder(stream); }
+
+		// MP4 is worth flagging: unlike WebM it needs its index written at the end, so a
+		// take that is cut off mid show is not recoverable. That is the cost of recording
+		// on an iPad, and the reason guests are pointed at a laptop.
+		const actual = mr.mimeType || type || "";
+		const name = fileName(opts.label, extensionFor(actual));
+		await ask("open", { name });
 
 		chain = Promise.resolve();
 		mr.ondataavailable = ev => {
@@ -200,9 +215,12 @@ const StudioRec = (() => {
 		const file = await readFile(name);
 		let writable;
 		if (window.showSaveFilePicker) {
+			const ext = (name.match(/\.[a-z0-9]+$/i) || [".webm"])[0].toLowerCase();
+			const mimeOf = { ".mp4": "video/mp4", ".mkv": "video/x-matroska", ".webm": "video/webm" };
+			const accept = {}; accept[mimeOf[ext] || "video/webm"] = [ext];
 			const handle = await window.showSaveFilePicker({
 				suggestedName: name,
-				types: [{ description: "Video", accept: { "video/webm": [".webm"] } }]
+				types: [{ description: "Video", accept: accept }]
 			});
 			writable = await handle.createWritable();
 		} else {

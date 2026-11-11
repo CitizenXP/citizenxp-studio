@@ -292,7 +292,7 @@
 		</div>
 		<div id="recNote" class="small" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-sm); background: rgba(255,255,255,0.03); color: var(--text-dim); line-height: 1.5;"><i class="las la-record-vinyl"></i> This show is recorded on your own computer for quality. Your browser may ask where to save the file; anywhere is fine, and you will send it to the producer afterwards.</div>
 			<div id="paNote" class="small hidden" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid rgba(var(--accent-rgb), 0.35); border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent); line-height: 1.5;"><i class="las la-headphones"></i> This show uses studio-quality audio. Please wear headphones to avoid echo.</div>
-		<div id="iabNote" class="small hidden" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid rgba(255,180,90,0.42); border-radius: var(--r-sm); background: rgba(255,180,90,0.09); color: #ffcf96; line-height: 1.5;"><i class="las la-exclamation-triangle"></i> <b>Open this in your normal browser first.</b> You are in <span id="iabName">an app's built-in browser</span>, which usually will not let a website use your camera. Tap the <b>&hellip;</b> or share button on this screen and choose <b>Open in <span id="iabTarget">Safari</span></b>, then use this link again.</div>
+		<div id="iabNote" class="small hidden" style="margin: -6px 0 18px 0; padding: 10px 14px; border: 1px solid rgba(255,180,90,0.42); border-radius: var(--r-sm); background: rgba(255,180,90,0.09); color: #ffcf96; line-height: 1.5;"><i class="las la-exclamation-triangle"></i> <span id="iabText"></span></div>
 		<div class="field">
 			<label for="guestName">Your name (shown on screen)</label>
 			<input type="text" id="guestName" maxlength="40" placeholder="e.g. Jane Smith" autocomplete="name" />
@@ -724,12 +724,54 @@
 		return null;
 	}
 
+	/* On an iPad or iPhone, Apple requires every browser to use WebKit, so Chrome, Edge
+	   and Firefox there are Safari's engine wearing someone else's badge. Apple does not
+	   hand them the camera the way it does Safari itself, and the failure is silent and
+	   confusing: the call loads, VDO.Ninja appears to connect, the guest sits looking at
+	   a working page, and the control room never sees them because they never published
+	   anything. Two guests lost an episode to exactly this. Nothing a web page can do
+	   fixes it, so the only honest answer is to say so before they try. */
+	function iosWrongBrowser() {
+		if (!isIOS) return null;
+		if (/CriOS/.test(UA)) return "Chrome";
+		if (/EdgiOS/.test(UA)) return "Edge";
+		if (/FxiOS/.test(UA)) return "Firefox";
+		if (/OPT\//.test(UA)) return "Opera";
+		return null;
+	}
+
 	// Shown in the lobby, before they spend a join attempt finding out the hard way.
-	(function warnAboutInAppBrowser() {
-		const which = inAppBrowser();
-		if (!which) return;
-		$("iabName").textContent = which;
-		$("iabTarget").textContent = isIOS ? "Safari" : "Chrome";
+	(function warnAboutBrowser() {
+		const wrong = iosWrongBrowser();
+		const app = inAppBrowser();
+		let html = null;
+		if (wrong) {
+			html = "<b>" + wrong + " on an iPad or iPhone cannot use your camera.</b> " +
+				"That is an Apple restriction and this page cannot work around it: on an " +
+				"iPad every browser has to run Safari's engine, and only Safari itself is " +
+				"given the camera. If you join here you will look connected and nobody will " +
+				"see or hear you. Open this same link in <b>Safari</b> instead.";
+		} else if (app) {
+			html = "<b>Open this in your normal browser first.</b> You are in " + app +
+				", which usually will not let a website use your camera. Tap the <b>&hellip;</b> " +
+				"or share button on this screen and choose <b>Open in " +
+				(isIOS ? "Safari" : "Chrome") + "</b>, then use this link again.";
+		}
+		if (!html) return;
+		$("iabText").innerHTML = html;
+		// There is no reliable way for a web page to hand a link to Safari, so the next
+		// best thing is to save them typing a long invite URL on a tablet keyboard.
+		const copy = document.createElement("button");
+		copy.className = "btn";
+		copy.type = "button";
+		copy.style.cssText = "margin-top:10px";
+		copy.textContent = "Copy this link";
+		copy.addEventListener("click", async () => {
+			const ok = await Studio.copyText(location.href);
+			copy.textContent = ok ? "Copied: now paste it into Safari" : "Press and hold the address bar to copy it";
+		});
+		$("iabText").appendChild(document.createElement("br"));
+		$("iabText").appendChild(copy);
 		$("iabNote").classList.remove("hidden");
 	})();
 
@@ -737,6 +779,16 @@
 
 	function camSteps(denied) {
 		const steps = [];
+		// If they are on iOS in anything but Safari, this is the whole answer and the
+		// permission advice below is a waste of their time: no setting unblocks it.
+		const wrong = iosWrongBrowser();
+		if (wrong) {
+			steps.push("<b>Open this same link in Safari.</b> " + wrong + " on an iPad or " +
+				"iPhone is not allowed to use the camera, no matter how the permissions are " +
+				"set, because Apple only gives camera access to Safari itself.");
+			steps.push("Copy the address, open <b>Safari</b>, paste it in, and join from there.");
+			return steps;
+		}
 		if (denied) {
 			if (isIOS) steps.push("In Safari, tap <b>aA</b> at the left of the address bar, choose <b>Website Settings</b>, and set <b>Camera</b> and <b>Microphone</b> to <b>Allow</b>.");
 			else if (isAndroid) steps.push("Tap the <b>lock</b> icon at the left of the address bar, choose <b>Permissions</b>, and allow <b>Camera</b> and <b>Microphone</b>.");
@@ -756,10 +808,15 @@
 	function showCamHelp(denied) {
 		if (camHelpShown || camHelpDismissed) return;
 		camHelpShown = true;
-		$("camHelpTitle").textContent = denied ? "Your browser blocked the camera" : "Your camera has not started yet";
-		$("camHelpWhy").textContent = denied
-			? "This page was refused access to your camera and microphone, so the show team cannot see or hear you and you are not in the room yet."
-			: "You are still on the camera setup step, so the show team cannot see you yet. Here is how to get past it.";
+		const wrong = iosWrongBrowser();
+		$("camHelpTitle").textContent = wrong
+			? "This browser cannot use your camera"
+			: (denied ? "Your browser blocked the camera" : "Your camera has not started yet");
+		$("camHelpWhy").textContent = wrong
+			? "You are using " + wrong + " on an iPad or iPhone, which Apple does not allow to use the camera. The call looks connected, but you are not publishing anything and the show team cannot see or hear you."
+			: (denied
+				? "This page was refused access to your camera and microphone, so the show team cannot see or hear you and you are not in the room yet."
+				: "You are still on the camera setup step, so the show team cannot see you yet. Here is how to get past it.");
 		$("camHelpSteps").innerHTML = camSteps(denied).map(s => "<li>" + s + "</li>").join("");
 		$("camHelp").classList.remove("hidden");
 	}
@@ -778,6 +835,11 @@
 			denied = /permission\s+access\s+to\s+the\s+camera|denied|NotAllowedError|NotFoundError|no camera/i.test(txt);
 		} catch (e) {}
 		if (denied) { showCamHelp(true); return; }
+		// No point waiting out the timer on iOS in the wrong browser: it is never going
+		// to start, so say so while they still have time to switch.
+		if (iosWrongBrowser() && connectStartedAt && Date.now() - connectStartedAt > 8000) {
+			showCamHelp(true); return;
+		}
 		if (connectStartedAt && Date.now() - connectStartedAt > 45000) showCamHelp(false);
 	}
 

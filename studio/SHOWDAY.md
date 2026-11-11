@@ -29,6 +29,10 @@ Send each guest their invite plus these four lines:
 > - Use **Chrome or Edge on a computer**. A phone can join and go live, but it cannot
 >   record your master copy, and a laptop screen is the only way to see the rest of
 >   the panel properly.
+> - **On an iPad or iPhone you must use Safari.** Chrome, Edge and Firefox on Apple
+>   devices are not allowed to use the camera, so you will appear to connect and nobody
+>   will see or hear you. This is an Apple restriction and nothing we can fix. The join
+>   page now spots it and offers a Copy this link button so you can paste it into Safari.
 > - **On a phone, open the link in Safari (iPhone) or Chrome (Android) itself.** If you
 >   tap the link inside Instagram, Facebook, Messenger, LINE or TikTok, it opens in that
 >   app's own browser, which usually refuses to give a website the camera. You then sit
@@ -134,6 +138,12 @@ share in that tab and pick a tab instead.
 
 **Guests say they can hear themselves echoing.** You shared your whole screen, so your
 control room monitoring is going out with it. Stop the share and pick just the tab.
+
+**A guest on an iPad says they joined but is not on your board.** They are in Chrome,
+Edge or Firefox, which on an Apple device cannot touch the camera. Their screen will now
+tell them so within a few seconds and offer a Copy this link button. They paste it into
+Safari and rejoin. If you have an iPad guest booked, say "Safari only" when you send
+their invite and save yourself the sound check.
 
 **A guest's recording says it stopped on its own.** Almost always their disk filling up.
 The guest's screen says which. They can clear space and you can start them again; what is

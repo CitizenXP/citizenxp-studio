@@ -112,6 +112,27 @@ marked **Control Room**. Turn on *Private chat* in Settings and guests' messages
 to producers, and the panel says so, so nobody types something awkward assuming privacy that
 isn't there.
 
+### Guests on an iPad or iPhone
+
+**Safari only.** On Apple devices every browser is required to run Safari's engine, and
+Apple does not give camera access to the others. Chrome on an iPad loads the call,
+connects to the signalling server and looks entirely healthy, then never gets a camera,
+so the guest sits there believing they have joined while the control room sees nobody at
+all. Two guests were lost to exactly this before it was diagnosed. There is no fix at the
+page level: the iframe already carries the camera permission and the site is already
+served over HTTPS.
+
+So the join page detects it instead. A guest on iOS in anything but Safari gets a plain
+warning in the lobby with a **Copy this link** button, since there is no reliable way for
+a web page to hand a link to Safari and nobody wants to retype an invite URL on a tablet.
+If they join anyway, the same explanation replaces the camera help within a few seconds
+rather than making them wait out the timeout for advice that cannot help them.
+
+An iPad guest in Safari works, with one caveat: Safari's recorder produces MP4 rather
+than WebM, and MP4 writes its index at the end, so an iPad recording that is cut off
+mid-show is not recoverable the way a laptop's is. The file is named `.mp4` so your
+conversion script treats it correctly.
+
 ### Guests on a phone
 
 A phone works. The join page is built for a narrow screen, and a phone guest joins, waits,

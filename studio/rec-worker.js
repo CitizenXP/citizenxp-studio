@@ -71,7 +71,8 @@ async function listFiles() {
 	const dir = await root();
 	const out = [];
 	for await (const [name, h] of dir.entries()) {
-		if (h.kind !== "file" || !/\.webm$/i.test(name)) continue;
+		// Safari records MP4, so a leftover take is not always a .webm.
+		if (h.kind !== "file" || !/\.(webm|mp4|mkv)$/i.test(name)) continue;
 		// The file currently being recorded is not "left over", so leave it out.
 		if (name === openName) continue;
 		try { const f = await h.getFile(); out.push({ name, size: f.size, at: f.lastModified }); }
